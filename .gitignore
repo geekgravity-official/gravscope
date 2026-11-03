@@ -10,3 +10,5 @@ dist
 .npmrc
 # Historical screenshots from before the GravScope identity
 demo/*.png
+
+site-dist

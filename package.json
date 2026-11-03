@@ -34,7 +34,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "check:package": "node scripts/check-package.mjs",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:package"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:package",
+    "build:site": "node scripts/build-site.mjs"
   },
   "keywords": [
     "debug",
@@ -67,7 +68,7 @@
     "type": "git",
     "url": "git+https://github.com/geekgravity-official/gravscope.git"
   },
-  "homepage": "https://github.com/geekgravity-official/gravscope#readme",
+  "homepage": "https://geekgravity-official.github.io/gravscope/",
   "bugs": {
     "url": "https://github.com/geekgravity-official/gravscope/issues"
   }

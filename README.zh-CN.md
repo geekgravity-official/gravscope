@@ -2,6 +2,8 @@
 
 # GravScope
 
+[Website & Playground / 官网与在线体验](https://geekgravity-official.github.io/gravscope/)
+
 [English](README.md) · [贡献指南](CONTRIBUTING.md) · [更新日志](CHANGELOG.md)
 
 轻量、可扩展的移动端前端调试面板。在手机网页里查看日志、网络请求、元素树和本地存储，也可以直接执行一段 JavaScript。
@@ -170,3 +172,15 @@ import GravScope from '@geekgravity/gravscope/modern';
 ES5 包的语法是 `var` 和 `function`，并带上 `Promise`、`Map`、`Object.assign` 这类语言 polyfill。`ParentNode.append`、`replaceChildren`、`ChildNode.remove` 在缺失时会就地补上。现代包不包含这些补丁。
 
 页面仍然需要 Shadow DOM、CSS 变量等浏览器能力。ES5 语法检查通过不等于旧 WebView 可用；目前尚未完成 iOS、Android 和微信内置浏览器的真机兼容性验收。开发环境建议 Node.js 22.12+。
+
+## CDN
+
+jsDelivr (pinned version / 固定版本):
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js"></script>
+<script>const panel = new GravScope();</script>
+```
+
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js).
+

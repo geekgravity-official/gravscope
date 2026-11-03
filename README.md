@@ -2,6 +2,8 @@
 
 # GravScope
 
+[Website & Playground / 官网与在线体验](https://geekgravity-official.github.io/gravscope/)
+
 **Mobile web debugging, by GeekGravity.**
 
 [简体中文](README.zh-CN.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
@@ -133,3 +135,15 @@ Open the local URL printed by Vite. Add `?shot` to populate sample data. This sa
 ## License
 
 [MIT](LICENSE).
+
+## CDN
+
+jsDelivr (pinned version / 固定版本):
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js"></script>
+<script>const panel = new GravScope();</script>
+```
+
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js).
+

@@ -146,4 +146,3 @@ jsDelivr (pinned version / 固定版本):
 ```
 
 [UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js).
-

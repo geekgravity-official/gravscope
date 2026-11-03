@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+*.local
+
+*.tgz
+.env
+.env.*
+!.env.example
+.npmrc
+# Historical screenshots from before the GravScope identity
+demo/*.png

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>GravScope Demo</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/gravscope.svg" />
+    <link rel="stylesheet" href="/demo/style.css" />
+  </head>
+  <body>
+    <main id="autotest-anchor" class="page">
+      <header class="top">
+        <div>
+          <p class="eyebrow">Mobile debug panel</p>
+          <h1><img class="brand-mark" src="/brand/gravscope.svg" alt="" width="40" height="40" />GravScope</h1>
+        </div>
+        <button id="theme" type="button">切换主题</button>
+      </header>
+      <p class="lead">屏幕右侧、中线偏下的 GravScope 按钮会打开调试面板。日志、网络、元素、存储和命令行都在里面。</p>
+
+      <div class="grid">
+      <section class="card">
+        <h2>日志</h2>
+        <p class="hint">不同级别，以及对象、表格和带样式的输出。</p>
+        <div class="actions">
+          <button type="button" data-act="log">log</button>
+          <button type="button" data-act="info">info</button>
+          <button type="button" data-act="warn">warn</button>
+          <button type="button" data-act="error">error</button>
+          <button type="button" data-act="object">object</button>
+          <button type="button" data-act="table">table</button>
+          <button type="button" data-act="styled">styled</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>网络</h2>
+        <p class="hint">fetch、XHR，以及脚本、样式、图片。加载中、失败和缓存会分开标出来。</p>
+        <div class="actions">
+          <button type="button" data-act="fetch">fetch</button>
+          <button type="button" data-act="fetch-404">fetch 404</button>
+          <button type="button" data-act="xhr">XHR</button>
+          <button type="button" data-act="beacon">beacon</button>
+          <button type="button" data-act="asset">静态资源</button>
+          <button type="button" data-act="asset-fail">加载失败</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>存储</h2>
+        <p class="hint">写入后到存储页查看、修改或删除。</p>
+        <div class="actions">
+          <button type="button" data-act="storage">写入 LocalStorage</button>
+          <button type="button" data-act="cookie">写入 Cookie</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>其他</h2>
+        <p class="hint">未捕获的异常、自定义面板，以及系统页里的字段。</p>
+        <div class="actions">
+          <button type="button" data-act="reject">Promise 拒绝</button>
+          <button type="button" data-act="plugin">自定义插件</button>
+          <button type="button" data-act="system">写入系统信息</button>
+        </div>
+      </section>
+      </div>
+    </main>
+    <pre id="autotest" hidden></pre>
+    <script type="module" src="/demo/main.ts"></script>
+  </body>
+</html>

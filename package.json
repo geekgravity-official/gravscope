@@ -1,0 +1,74 @@
+{
+  "name": "@geekgravity/gravscope",
+  "version": "0.1.0",
+  "description": "A lightweight, extendable front-end debug panel for mobile web pages.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/gravscope.cjs",
+  "module": "./dist/gravscope.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/gravscope.js",
+      "require": "./dist/gravscope.cjs"
+    },
+    "./modern": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/gravscope.modern.js",
+      "require": "./dist/gravscope.modern.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "public/brand",
+    "README.zh-CN.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "rm -rf dist && vite build --mode lib && vite build --mode iife && vite build --mode modern && vite build --mode modern-iife && node scripts/strip-templates.mjs && tsc -p tsconfig.build.json && node scripts/check-es5.mjs && node scripts/check-modern.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "check:package": "node scripts/check-package.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:package"
+  },
+  "keywords": [
+    "debug",
+    "console",
+    "mobile",
+    "gravscope",
+    "devtools"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/parser": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "@rollup/plugin-babel": "^6.0.4",
+    "core-js": "^3.46.0",
+    "happy-dom": "^20.0.10",
+    "regenerator-runtime": "^0.14.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geekgravity-official/gravscope.git"
+  },
+  "homepage": "https://github.com/geekgravity-official/gravscope#readme",
+  "bugs": {
+    "url": "https://github.com/geekgravity-official/gravscope/issues"
+  }
+}

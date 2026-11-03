@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AUTOTEST_PENDING</title>
+  </head>
+  <body>
+    <div id="autotest-anchor">anchor</div>
+    <pre id="autotest"></pre>
+    <script src="./dist/gravscope.iife.js"></script>
+    <script>
+      (function () {
+        var report = [];
+        function check(name, pass) {
+          report.push((pass ? 'PASS ' : 'FAIL ') + name);
+        }
+        try {
+          check('global', typeof GravScope === 'function');
+          localStorage.setItem('gravscope-iife', 'yes');
+          var gc = new GravScope({ lang: 'en', defaultPlugins: ['system', 'network', 'element', 'storage'] });
+          console.log('iife-log');
+          gc.show();
+          var text = document.querySelector('gravscope-root').shadowRoot.textContent;
+          check('log', text.indexOf('iife-log') !== -1);
+          check('plugin', typeof GravScope.Plugin === 'function');
+          var plugin = new GravScope.Plugin('extra', 'Extra');
+          plugin.on('render', function (element) { element.textContent = 'extra-panel'; });
+          gc.addPlugin(plugin);
+          check('custom', document.querySelector('gravscope-root').shadowRoot.textContent.indexOf('extra-panel') !== -1);
+          gc.destroy();
+          check('removed', !document.querySelector('gravscope-root'));
+        } catch (error) {
+          report.push('FAIL exception ' + (error && error.message ? error.message : error));
+        }
+        document.getElementById('autotest').textContent = report.join('\n');
+        document.title = report.every(function (line) { return line.indexOf('PASS') === 0; }) ? 'AUTOTEST_OK' : 'AUTOTEST_FAIL';
+      })();
+    </script>
+  </body>
+</html>

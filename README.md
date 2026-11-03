@@ -12,7 +12,7 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Status
 
-**0.1.0 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open. The npm package has not been published yet; use a local tarball until publication.
+**0.1.0 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
 
 ## Features
 
@@ -28,7 +28,7 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Quick start
 
-After npm publication:
+Install from npm:
 
 ```sh
 npm install @geekgravity/gravscope
@@ -128,7 +128,7 @@ npm run check:package
 
 Open the local URL printed by Vite. Add `?shot` to populate sample data. This sample deliberately triggers an error and a failed resource request.
 
-`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.0.tgz` before public release.
+`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.0.tgz` for local evaluation.
 
 ## License
 

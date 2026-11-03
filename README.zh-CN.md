@@ -27,7 +27,7 @@ GravScope 是独立实现，解决和 [vConsole](https://github.com/Tencent/vCon
 
 ## 安装
 
-计划发布的包名为 `@geekgravity/gravscope`，当前尚未发布；以下 npm 安装命令在发布后可用。本地可先运行 `npm run build` 和 `npm pack`，再安装生成的 tgz 文件。
+包名为 `@geekgravity/gravscope`。也可以运行 `npm run build` 和 `npm pack`，安装生成的 tgz 文件进行本地验证。
 
 ```bash
 npm install @geekgravity/gravscope

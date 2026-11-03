@@ -76,6 +76,7 @@ const gc = new GravScope({
   maxLogNumber: 1000,
   maxNetworkNumber: 200,
   entryButton: true,
+  exportEnabled: true,
   onReady() {
     console.log('GravScope ready');
   },
@@ -103,7 +104,9 @@ GravScope.current; // 当前实例，同一时间只能有一个
 
 ## 导出问题现场
 
-打开日志面板，点击底部「导出」。可以选择全部已保留记录或最近 5 分钟，预览后保存：
+初始化传入 `exportEnabled: false` 可隐藏导出入口，默认 `true`。该选项只控制界面，`getReport()` 仍可调用。
+
+打开日志面板，点击底部「导出」。点击「复制报告」复制当前预览的脱敏 JSON；自动复制失败时会选中文本，也可使用「全选文本」后长按手动复制。可以选择全部已保留记录或最近 5 分钟，预览后保存：
 
 - **离线 HTML**：在电脑浏览器中打开，按条展开日志和网络详情；不需要部署服务，也不加载外部资源或执行报告数据。
 - **JSON**：便于自行归档或接入其他排查工具。下载受限的浏览器可以手动复制预览内容。
@@ -142,6 +145,8 @@ gc.addPlugin(plugin);
 
 插件事件：`init`、`render`、`show`、`hide`、`remove`。
 
+日志工具栏提供「刷新页面」，执行普通刷新，当前内存日志会重置。发布包保留 `.map` 文件，但不再自动请求；需要调试库源码时可手动加载对应映射。
+
 ## 本地开发
 
 ```bash
@@ -178,8 +183,8 @@ ES5 包的语法是 `var` 和 `function`，并带上 `Promise`、`Map`、`Object
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js).

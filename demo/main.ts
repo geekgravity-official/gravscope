@@ -52,6 +52,19 @@ if (params.has('shot')) {
 if (params.has('autotest')) void runSelfCheck(gc);
 
 function runAction(act: string): void {
+  if (act === 'group' || act === 'group-collapsed') {
+    if (act === 'group-collapsed') console.groupCollapsed('订单诊断（默认折叠）');
+    else console.group('订单诊断（默认展开）');
+    console.info('进入结账', { orderId: 'demo-001' });
+    console.groupCollapsed('支付请求（嵌套折叠）');
+    console.log({ method: 'POST', amount: 99 });
+    console.error(new Error('示例支付失败'));
+    console.groupEnd();
+    console.warn('返回订单页');
+    console.groupEnd();
+    console.log('分组结束，回到顶层');
+    gc.showTab('log');
+  }
   if (act === 'log') console.log('hello from GravScope', { time: Date.now() });
   if (act === 'info') console.info('sync finished', ['a', 'b']);
   if (act === 'warn') console.warn('cache miss', { key: 'session' });

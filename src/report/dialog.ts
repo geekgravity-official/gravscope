@@ -1,5 +1,5 @@
 import type { GravScopeLang } from '../types';
-import { el } from '../ui/dom';
+import { copyText, el } from '../ui/dom';
 import { reportHTML, type DiagnosticReport, type ReportOptions } from './snapshot';
 
 export function showReportDialog(parent: HTMLElement, lang: GravScopeLang, capture: (options: ReportOptions) => DiagnosticReport): void {
@@ -29,6 +29,31 @@ export function showReportDialog(parent: HTMLElement, lang: GravScopeLang, captu
   period.addEventListener('change', refresh);
   bodies.addEventListener('change', refresh);
   const actions = el('div', { class: 'gc-report-controls' });
+  const selectPreview = () => {
+    preview.focus();
+    preview.select();
+    preview.setSelectionRange(0, preview.value.length);
+  };
+  const copy = el('button', { class: 'gc-tool gc-report-copy', type: 'button', text: zh ? '复制报告' : 'Copy report' });
+  copy.addEventListener('click', async () => {
+    if (!snapshot || copy.disabled) return;
+    const content = preview.value;
+    copy.disabled = true;
+    const ok = await copyText(content);
+    copy.disabled = false;
+    if (!dialog.isConnected) return;
+    if (ok) summary.textContent = zh ? '已复制脱敏后的 JSON 报告。' : 'Redacted JSON report copied.';
+    else {
+      selectPreview();
+      summary.textContent = zh ? '自动复制未成功，已全选报告，请长按文本手动复制。' : 'Automatic copy failed. Report selected; copy the text manually.';
+    }
+  });
+  const select = el('button', { class: 'gc-tool gc-report-select', type: 'button', text: zh ? '全选文本' : 'Select all' });
+  select.addEventListener('click', () => {
+    selectPreview();
+    summary.textContent = zh ? '已全选，请长按文本复制。' : 'Report selected. Copy the text manually.';
+  });
+  actions.append(copy, select);
   for (const format of ['html', 'json'] as const) {
     const button = el('button', { class: 'gc-tool', type: 'button', text: format === 'html' ? (zh ? '保存离线报告' : 'Save offline report') : 'JSON' });
     button.addEventListener('click', () => {

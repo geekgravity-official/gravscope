@@ -56,9 +56,12 @@ export class GravScope {
       this.unhooks.push(installNetworkHook(this.netStore));
       this.unhooks.push(installErrorHook(this.logStore));
       const logPlugin = createLogPlugin(this.logStore, this.options.lang, (code) => this.runCommand(code));
-      logPlugin.addTool(this.options.lang === 'zh' ? '导出' : 'Export', () => {
-        showReportDialog(this.shell.panel, this.options.lang, (options) => this.getReport(options));
-      });
+      if (this.options.exportEnabled) {
+        logPlugin.addTool(this.options.lang === 'zh' ? '导出' : 'Export', () => {
+          showReportDialog(this.shell.panel, this.options.lang, (options) => this.getReport(options));
+        });
+      }
+      logPlugin.addTool(this.options.lang === 'zh' ? '刷新页面' : 'Reload page', () => window.location.reload());
       this.addPlugin(logPlugin);
       for (const name of this.options.defaultPlugins) this.addPlugin(this.createBuiltin(name));
       this.shell.mount(() => this.ready());
@@ -217,6 +220,7 @@ function resolveOptions(options: GravScopeOptions): ResolvedOptions {
     maxLogNumber: positive(options.maxLogNumber, 1000),
     maxNetworkNumber: positive(options.maxNetworkNumber, 200),
     entryButton: options.entryButton !== false,
+    exportEnabled: options.exportEnabled !== false,
     target: options.target ?? null,
     onReady: options.onReady,
   };

@@ -14,7 +14,7 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Status
 
-**0.1.0 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
+**0.1.1 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
 
 ## Features
 
@@ -62,6 +62,7 @@ const panel = new GravScope({
   maxLogNumber: 1000,
   maxNetworkNumber: 200,
   entryButton: true,
+  exportEnabled: true,
 });
 
 panel.show();
@@ -77,7 +78,9 @@ Log is always included. `defaultPlugins` controls the other built-in panels; it 
 
 ## Diagnostic reports
 
-Choose **Export** in the log toolbar. Preview all retained records or the last five minutes, then save HTML or JSON. The HTML report opens offline without external resources or executable report data. If downloading is unsupported, copy the preview manually.
+Set `exportEnabled: false` during initialization to hide the export UI (default: `true`). This is a UI preference; `getReport()` remains available.
+
+Choose **Export** in the log toolbar. **Copy report** copies the redacted JSON preview; **Select all** supports manual copying when WebView clipboard APIs are unavailable. Preview all retained records or the last five minutes, then save HTML or JSON. The HTML report opens offline without external resources or executable report data. If downloading is unsupported, copy the preview manually.
 
 ```ts
 const snapshot = panel.getReport({
@@ -115,6 +118,8 @@ Events: `init`, `render`, `show`, `hide`, `remove`.
 - Log/network retention is bounded. A 10,000-record store test verifies capacity, not real-device rendering speed.
 - Initialization failures clean up registered hooks and allow a new instance.
 
+The log toolbar includes **Reload page**, which performs a normal reload and resets in-memory logs. Packaged `.map` files remain available for manual debugging, without automatic source map requests.
+
 ## Local development
 
 Use Node.js 22.12+ and npm.
@@ -130,7 +135,7 @@ npm run check:package
 
 Open the local URL printed by Vite. Add `?shot` to populate sample data. This sample deliberately triggers an error and a failed resource request.
 
-`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.0.tgz` for local evaluation.
+`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.1.tgz` for local evaluation.
 
 ## License
 
@@ -141,8 +146,8 @@ Open the local URL printed by Vite. Add `?shot` to populate sample data. This sa
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js).

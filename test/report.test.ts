@@ -1,11 +1,65 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GravScope } from '../src/index';
 import { LogStore, NetStore, SystemStore } from '../src/core/store';
 import { captureReport, reportHTML, sanitize } from '../src/report/snapshot';
 
-afterEach(() => GravScope.current?.destroy());
+afterEach(() => {
+  GravScope.current?.destroy();
+  vi.restoreAllMocks();
+});
 
 describe('diagnostic reports', () => {
+  const openReport = () => {
+    const gc = new GravScope({ lang: 'en', defaultPlugins: [] });
+    gc.show();
+    console.log({ token: 'PRIVATE_COPY_TOKEN', message: 'copy-report-marker' });
+    const root = document.querySelector('gravscope-root')!.shadowRoot!;
+    [...root.querySelectorAll<HTMLButtonElement>('.gc-tool')].find(button => button.textContent === 'Export')!.click();
+    return root;
+  };
+
+  it('hides the export entry when disabled while retaining the report API', () => {
+    const gc = new GravScope({ lang: 'en', defaultPlugins: [], exportEnabled: false });
+    gc.show();
+    console.log('report-api-marker');
+    const root = document.querySelector('gravscope-root')!.shadowRoot!;
+    expect([...root.querySelectorAll('.gc-tool')].some(button => button.textContent === 'Export')).toBe(false);
+    expect(JSON.stringify(gc.getReport())).toContain('report-api-marker');
+  });
+
+  it('copies the current redacted preview and reports success', async () => {
+    const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    const root = openReport();
+    const preview = root.querySelector<HTMLTextAreaElement>('.gc-report-preview')!;
+    root.querySelector<HTMLButtonElement>('.gc-report-copy')!.click();
+    await vi.waitFor(() => expect(root.querySelector('.gc-report-summary')!.textContent).toContain('report copied'));
+    expect(write).toHaveBeenCalledWith(preview.value);
+    expect(preview.value).toContain('copy-report-marker');
+    expect(preview.value).not.toContain('PRIVATE_COPY_TOKEN');
+  });
+
+  it('selects the report for manual copying when clipboard access fails', async () => {
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Clipboard denied'));
+    const previous = Object.getOwnPropertyDescriptor(document, 'execCommand');
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: () => false });
+    try {
+      const root = openReport();
+      const preview = root.querySelector<HTMLTextAreaElement>('.gc-report-preview')!;
+      const copy = root.querySelector<HTMLButtonElement>('.gc-report-copy')!;
+      copy.click();
+      await vi.waitFor(() => expect(root.querySelector('.gc-report-summary')!.textContent).toContain('Automatic copy failed'));
+      expect(copy.disabled).toBe(false);
+      expect(preview.selectionStart).toBe(0);
+      expect(preview.selectionEnd).toBe(preview.value.length);
+      preview.setSelectionRange(0, 0);
+      root.querySelector<HTMLButtonElement>('.gc-report-select')!.click();
+      expect(preview.selectionEnd).toBe(preview.value.length);
+    } finally {
+      if (previous) Object.defineProperty(document, 'execCommand', previous);
+      else Reflect.deleteProperty(document, 'execCommand');
+    }
+  });
+
   it('redacts nested credentials, URL parameters, headers and JSON strings without mutating originals', () => {
     const original = { access_token: 'SECRET_A', nested: '{"password":"SECRET_B"}', url: 'https://user:SECRET_C@example.com/a?code=SECRET_D#SECRET_E' };
     const output = JSON.stringify(sanitize(original));

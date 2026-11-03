@@ -1,7 +1,7 @@
 import { mkdir, rm, cp, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-const url = 'https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.0/dist/gravscope.modern.iife.js';
-const expected = "495ee91c3aea7a227b2a45d0c10f246d413f69b39b007aa058773710913ffcd8";
+const url = 'https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js';
+const expected = "4ec1f8070af369e8146833dbeb268e02f049eb56c749d8d5d3092cf18b8b1873";
 const response = await fetch(url);
 if (!response.ok) throw new Error(`Published bundle download failed: ${response.status}`);
 const bytes = Buffer.from(await response.arrayBuffer());
@@ -12,4 +12,4 @@ await cp('public/brand', 'site-dist/brand', { recursive: true });
 await mkdir('site-dist/vendor', { recursive: true });
 await writeFile('site-dist/vendor/gravscope.modern.iife.js', bytes);
 await writeFile('site-dist/.nojekyll', '');
-console.log('Site built with checksum-verified npm 0.1.0 bundle.');
+console.log('Site built with checksum-verified npm 0.1.1 bundle.');

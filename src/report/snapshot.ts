@@ -97,7 +97,7 @@ export function captureReport(logs: LogStore, network: NetStore, system: SystemS
     page: redactText(location.href),
     device: { userAgent: navigator.userAgent, language: navigator.language, viewport: `${innerWidth} × ${innerHeight}` },
     custom: system.custom.map(entry => ({ key: entry.key, value: sensitive.test(entry.key) ? '[REDACTED]' : sanitize(entry.value) })),
-    logs: logs.items.filter(item => item.time >= since).map(item => ({ id: item.id, time: item.time, level: item.level, repeat: item.repeat, args: sanitize(item.args), command: item.command ? '[Command omitted]' : undefined })),
+    logs: logs.items.filter(item => item.time >= since).map(item => ({ id: item.id, time: item.time, level: item.level, repeat: item.repeat, kind: item.kind, depth: item.depth, groupIds: item.groupIds.slice(), collapsed: item.collapsed, args: sanitize(item.args), command: item.command ? '[Command omitted]' : undefined })),
     network: network.items.filter(item => item.startTime >= since).map(item => sanitize({ ...item, requestBody: options.includeBodies ? item.requestBody : '[Body omitted]', responseBody: options.includeBodies ? item.responseBody : '[Body omitted]' })),
     policy: 'Heuristic redaction; URL query values and fragments masked. Storage and command source excluded. Review before sharing. Only retained records are included; object values reflect export time.',
   };

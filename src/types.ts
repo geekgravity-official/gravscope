@@ -14,6 +14,8 @@ export interface GravScopeOptions {
   maxNetworkNumber?: number;
   /** Show the floating GC button. Defaults to true. */
   entryButton?: boolean;
+  /** Show the report export UI. Defaults to true; getReport() remains available. */
+  exportEnabled?: boolean;
   /** Mount point. Defaults to document.body. */
   target?: HTMLElement | string | null;
   onReady?: () => void;
@@ -26,6 +28,7 @@ export interface ResolvedOptions {
   maxLogNumber: number;
   maxNetworkNumber: number;
   entryButton: boolean;
+  exportEnabled: boolean;
   target: HTMLElement | string | null;
   onReady?: () => void;
 }

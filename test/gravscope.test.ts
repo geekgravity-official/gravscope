@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GravScope, GravScopePlugin } from '../src/index';
 
 const originalFetch = window.fetch.bind(window);
@@ -29,6 +29,18 @@ function clickNet(marker: string): void {
 }
 
 describe('GravScope', () => {
+  it('reloads the current page only when the reload tool is clicked', () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    try {
+      new GravScope({ lang: 'en', defaultPlugins: [] });
+      expect(reload).not.toHaveBeenCalled();
+      [...shadow().querySelectorAll<HTMLButtonElement>('.gc-tool')].find(button => button.textContent === 'Reload page')!.click();
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      reload.mockRestore();
+    }
+  });
+
   it('combines log search with level filtering and toggles the command input', () => {
     new GravScope({ lang: 'en', defaultPlugins: [] });
     console.info('needle info');

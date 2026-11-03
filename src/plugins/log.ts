@@ -22,6 +22,7 @@ export function createLogPlugin(store: LogStore, lang: GravScopeLang, runCommand
   let count: HTMLElement | null = null;
   const rows = new Map<number, { item: LogItem; row: HTMLElement }>();
   const textById = new Map<number, string>();
+  const collapsed = new Set<number>();
 
   const passes = (item: LogItem) => {
     if (level !== 'all' && item.level !== level) return false;
@@ -31,14 +32,41 @@ export function createLogPlugin(store: LogStore, lang: GravScopeLang, runCommand
 
   const syncEmpty = () => {
     if (!empty) return;
-    const visible = [...rows.values()].filter(({ row }) => !row.hidden).length;
+    const filtering = Boolean(query) || level !== 'all';
+    const matching = new Set<number>();
+    if (filtering) {
+      for (const { item } of rows.values()) {
+        if (!passes(item)) continue;
+        matching.add(item.id);
+        for (const id of item.groupIds) matching.add(id);
+      }
+    }
+    for (const { item, row } of rows.values()) {
+      row.hidden = filtering ? !matching.has(item.id) : item.groupIds.some(id => collapsed.has(id) && rows.has(id));
+      const toggle = row.querySelector<HTMLButtonElement>('.gc-group-toggle');
+      if (toggle) {
+        const open = filtering || !collapsed.has(item.id);
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.textContent = open ? '▾' : '▸';
+        toggle.disabled = filtering;
+      }
+    }
+    const visibleRows = [...rows.values()].filter(({ row }) => !row.hidden);
+    for (const { row } of rows.values()) row.classList.remove('gc-group-start', 'gc-group-end');
+    visibleRows.forEach(({ row }, index) => {
+      const region = row.dataset.groupRegion;
+      if (!region) return;
+      if (visibleRows[index - 1]?.row.dataset.groupRegion !== region) row.classList.add('gc-group-start');
+      if (visibleRows[index + 1]?.row.dataset.groupRegion !== region) row.classList.add('gc-group-end');
+    });
+    const visible = visibleRows.length;
     empty.hidden = visible > 0;
     empty.textContent = t(lang, query || level !== 'all' ? 'noMatches' : 'emptyLog');
     if (count) count.textContent = `${visible} / ${rows.size}`;
   };
 
   const apply = (item: LogItem, row: HTMLElement) => {
-    row.hidden = !passes(item);
+    row.hidden = !passes(item) || (!query && level === 'all' && item.groupIds.some(id => collapsed.has(id) && rows.has(id)));
   };
 
   const remember = (item: LogItem) => {
@@ -55,8 +83,18 @@ export function createLogPlugin(store: LogStore, lang: GravScopeLang, runCommand
   const appendRow = (item: LogItem) => {
     if (!list) return;
     remember(item);
+    if (item.kind === 'group' && item.collapsed) collapsed.add(item.id);
     const row = el('div', { class: `gc-row gc-lvl-${item.level}` });
     row.dataset.id = String(item.id);
+    const region = item.groupIds[0] ?? (item.kind === 'group' ? item.id : undefined);
+    if (region !== undefined) {
+      row.dataset.groupRegion = String(region);
+      row.classList.add('gc-group-region');
+      const colors = ['75, 118, 255', '139, 104, 218', '38, 151, 139'];
+      row.style.setProperty('--group-rgb', colors[region % colors.length]);
+      const layer = Math.min(4, item.groupIds.length + (item.kind === 'group' ? 1 : 0));
+      row.style.setProperty('--group-opacity', String(0.08 + Math.max(0, layer - 1) * 0.045));
+    }
     row.style.paddingLeft = `${item.depth * 12}px`;
     const line = el('div', { class: 'gc-line' });
     const head = el('div', { class: 'gc-line-head' });
@@ -73,6 +111,16 @@ export function createLogPlugin(store: LogStore, lang: GravScopeLang, runCommand
     copy.setAttribute('aria-label', t(lang, 'copy'));
     bindCopy(copy, () => textById.get(item.id) ?? '', lang);
     const main = el('div', { class: 'gc-row-main' });
+    if (item.kind === 'group') {
+      row.classList.add('gc-group');
+      const toggle = el('button', { class: 'gc-group-toggle', type: 'button', 'aria-label': textById.get(item.id) || 'console.group', 'aria-expanded': String(!collapsed.has(item.id)), text: collapsed.has(item.id) ? '▸' : '▾' });
+      toggle.addEventListener('click', () => {
+        if (collapsed.has(item.id)) collapsed.delete(item.id);
+        else collapsed.add(item.id);
+        syncEmpty();
+      });
+      main.append(toggle);
+    }
     main.append(line, copy);
     row.append(main, details);
     list.append(row);
@@ -181,10 +229,12 @@ export function createLogPlugin(store: LogStore, lang: GravScopeLang, runCommand
           rows.get(id)?.row.remove();
           rows.delete(id);
           textById.delete(id);
+          collapsed.delete(id);
         }
         syncEmpty();
       } else if (event.type === 'clear') {
         rows.clear();
+        collapsed.clear();
         textById.clear();
         list?.replaceChildren();
         if (empty && list) list.append(empty);

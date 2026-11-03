@@ -10,6 +10,8 @@ export interface LogItem {
   args: unknown[];
   repeat: number;
   depth: number;
+  groupIds: number[];
+  collapsed?: boolean;
   kind: LogKind;
   command?: string;
 }
@@ -25,6 +27,7 @@ export class LogStore {
   max = 1000;
   depth = 0;
   private seq = 0;
+  private groups: number[] = [];
   private listeners = new Set<(event: LogEvent) => void>();
 
   subscribe(listener: (event: LogEvent) => void): () => void {
@@ -43,7 +46,19 @@ export class LogStore {
     this.depth = Math.max(0, depth);
   }
 
-  append(input: { level: LogLevel; args: unknown[]; kind?: LogKind; command?: string }): LogItem {
+  beginGroup(args: unknown[], collapsed = false): LogItem {
+    const item = this.append({ level: 'log', args: args.length ? args : ['console.group'], kind: 'group', collapsed });
+    this.groups.push(item.id);
+    this.depth = this.groups.length;
+    return item;
+  }
+
+  endGroup(): void {
+    this.groups.pop();
+    this.depth = this.groups.length;
+  }
+
+  append(input: { level: LogLevel; args: unknown[]; kind?: LogKind; command?: string; collapsed?: boolean }): LogItem {
     const kind = input.kind ?? 'normal';
     const item: LogItem = {
       id: ++this.seq,
@@ -52,6 +67,8 @@ export class LogStore {
       args: input.args,
       repeat: 1,
       depth: this.depth,
+      groupIds: this.groups.slice(),
+      collapsed: input.collapsed,
       kind,
       command: input.command,
     };
@@ -62,6 +79,7 @@ export class LogStore {
       last.kind === 'normal' &&
       last.level === item.level &&
       last.depth === item.depth &&
+      last.groupIds.join(',') === item.groupIds.join(',') &&
       sameArgs(last.args, item.args)
     ) {
       last.repeat += 1;
@@ -76,6 +94,8 @@ export class LogStore {
 
   clear(): void {
     this.items = [];
+    this.groups = [];
+    this.depth = 0;
     this.emit({ type: 'clear' });
   }
 

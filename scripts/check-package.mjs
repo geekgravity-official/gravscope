@@ -37,6 +37,12 @@ for (const file of ['gravscope.iife.js', 'gravscope.modern.iife.js']) {
 console.log('Packed ESM, CommonJS and IIFE entry points passed.');
 `);
   process.stdout.write(execFileSync(process.execPath, ['check.mjs'], { cwd: directory, encoding: 'utf8' }));
+  for (const file of info.files.filter(file => /^dist\/.*\.(?:js|cjs)$/.test(file.path))) {
+    const content = readFileSync(join(directory, 'node_modules/@geekgravity/gravscope', file.path), 'utf8');
+    if (/\/\/[#@]\s*sourceMappingURL=/.test(content)) throw new Error(`Automatic sourcemap reference in ${file.path}`);
+    const map = JSON.parse(readFileSync(join(directory, 'node_modules/@geekgravity/gravscope', `${file.path}.map`), 'utf8'));
+    if (map.version !== 3 || !map.sources.length || !map.sourcesContent?.length) throw new Error(`Invalid hidden sourcemap for ${file.path}`);
+  }
   const manifest = JSON.parse(readFileSync(join(directory, 'node_modules/@geekgravity/gravscope/package.json'), 'utf8'));
   for (const entry of Object.values(manifest.exports)) readFileSync(join(directory, 'node_modules/@geekgravity/gravscope', entry.types));
   console.log(`Package: ${info.filename}; ${info.files.length} files; ${info.size} bytes.`);

@@ -585,4 +585,22 @@ i.gc-lvl-error { background: rgba(251, 113, 133, 0.18); }
 .gc-report .gc-level-select { max-width: none; }
 .gc-report-preview { flex: 1; min-height: 100px; width: 100%; resize: none; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: 12px/1.5 ui-monospace, monospace; }
 .gc-report-summary { color: var(--muted); font-size: 12px; }
+
+/* A continuous colored region includes the group heading and every descendant. */
+.gc-row.gc-group-region {
+  margin: 0 8px;
+  background: rgba(var(--group-rgb), var(--group-opacity));
+  border-left: 2px solid rgba(var(--group-rgb), 0.42);
+  border-right: 1px solid rgba(var(--group-rgb), 0.12);
+  border-bottom-color: transparent;
+}
+.gc-row.gc-group-region.gc-group-start { margin-top: 8px; border-radius: 8px 8px 0 0; border-top: 1px solid rgba(var(--group-rgb), 0.18); }
+.gc-row.gc-group-region.gc-group-end { margin-bottom: 8px; border-radius: 0 0 8px 8px; border-bottom: 1px solid rgba(var(--group-rgb), 0.18); }
+.gc-row.gc-group-region.gc-group-start.gc-group-end { border-radius: 8px; }
+.gc-group .gc-msg { font-weight: 600; }
+.gc-group-region.gc-lvl-error .gc-lvl { background: rgba(251, 113, 133, 0.24); }
+.gc-group-region.gc-lvl-warn .gc-lvl { background: rgba(251, 191, 36, 0.24); }
+.gc-group-toggle { flex: none; width: 32px; min-height: 44px; padding: 4px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font: inherit; }
+.gc-group-toggle:disabled { cursor: default; }
+.gc-group .gc-line { padding-left: 0; }
 `;

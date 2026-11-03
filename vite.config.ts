@@ -33,7 +33,7 @@ function legacyBuild(lib: LibraryOptions, emptyOutDir: boolean) {
   return {
     build: {
       emptyOutDir,
-      sourcemap: true,
+      sourcemap: 'hidden' as const,
       target: 'es2015' as const,
       lib,
       rollupOptions: {
@@ -62,7 +62,7 @@ function modernBuild(lib: LibraryOptions) {
     ],
     build: {
       emptyOutDir: false,
-      sourcemap: true,
+      sourcemap: 'hidden' as const,
       target: 'es2020' as const,
       lib,
     },

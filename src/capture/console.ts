@@ -50,27 +50,25 @@ export function installConsoleHook(store: LogStore): () => void {
   const group = console.group.bind(console);
   console.group = (...args: unknown[]) => {
     guard(() => {
-      store.append({ level: 'log', args, kind: 'group' });
-      store.setDepth(store.depth + 1);
+      store.beginGroup(args);
     });
-    group(...args);
+    callHost(() => group(...args));
   };
 
   saved.groupCollapsed = console.groupCollapsed;
   const groupCollapsed = console.groupCollapsed.bind(console);
   console.groupCollapsed = (...args: unknown[]) => {
     guard(() => {
-      store.append({ level: 'log', args, kind: 'group' });
-      store.setDepth(store.depth + 1);
+      store.beginGroup(args, true);
     });
-    groupCollapsed(...args);
+    callHost(() => groupCollapsed(...args));
   };
 
   saved.groupEnd = console.groupEnd;
   const groupEnd = console.groupEnd.bind(console);
   console.groupEnd = () => {
-    guard(() => store.setDepth(store.depth - 1));
-    groupEnd();
+    guard(() => store.endGroup());
+    callHost(() => groupEnd());
   };
 
   saved.assert = console.assert as (...args: unknown[]) => void;

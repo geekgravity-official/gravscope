@@ -16,7 +16,7 @@ v0.2.1 官网与实际日志面板截图。[打开在线实验台](https://geekg
 
 ![GravScope 官网首页，展示项目定位、接入入口与功能示意](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-0.2.1.jpg)
 
-移动端日志面板 · iPhone 16 / iOS 18.6 模拟器，运行于 GeekGravity 内
+移动端日志面板 · iPhone 16 / iOS 18.6 模拟器，运行于 GeekGravity 内（仅展示面板区域）
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-ios-0.2.1.jpg" alt="GravScope 在 iPhone 16 模拟器 GeekGravity 内的移动端日志面板" width="360" />

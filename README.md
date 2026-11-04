@@ -18,7 +18,7 @@ Website and live console screenshots from v0.2.1. [Try the playground](https://g
 
 ![GravScope website with quick-start links and a feature illustration](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-0.2.1.jpg)
 
-Mobile console · iPhone 16 / iOS 18.6 simulator, inside GeekGravity
+Mobile console · iPhone 16 / iOS 18.6 simulator, inside GeekGravity (panel only)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-ios-0.2.1.jpg" alt="GravScope mobile console in GeekGravity on an iPhone 16 simulator" width="360" />

@@ -136,22 +136,159 @@ const gc = new GravScope({
 
 `setOption()` 当前仅支持 `theme`、`maxLogNumber`、`maxNetworkNumber`。语言、挂载节点、入口与导出开关需 `destroy()` 后重新初始化，旧记录不会保留。插件可使用 `addPlugin()` / `removePlugin()` 管理。
 
-## API
+## API 方法
+
+以下示例假设已创建 `const panel = new GravScope()`。方法都是同步 API；`void` 表示没有返回值，不支持链式调用，也不返回 Promise。
+
+### `show()`
+
+参数：无。
+
+返回值：`void`。
+
+打开面板并清除未读数量，不清空日志。
 
 ```ts
-gc.show();
-gc.hide();
-gc.showTab('network');
-gc.setOption('theme', 'dark');
-gc.setOption('maxLogNumber', 500);
-gc.setSystemInfo('User', 'ada');
-gc.addPlugin(plugin);
-gc.removePlugin('custom');
-gc.destroy();
-
-GravScope.version;
-GravScope.current; // 当前实例，同一时间只能有一个
+panel.show();
 ```
+
+### `hide()`
+
+参数：无。
+
+返回值：`void`。
+
+收起面板；采集继续进行。
+
+```ts
+panel.hide();
+```
+
+### `showTab(id)`
+
+参数：id: string，已添加的面板 ID。
+
+返回值：`void`。
+
+切换并打开面板。内置 ID 为 log、network、element、storage、system；自定义面板用 plugin.id。ID 不存在时保留当前标签，但仍打开面板。
+
+```ts
+panel.showTab('network');
+```
+
+### `setOption(key, value)`
+
+参数：key: 'theme'，value: 'light' / 'dark' / 'auto'；或 key: 'maxLogNumber' / 'maxNetworkNumber'，value: number。
+
+返回值：`void`。
+
+即时修改主题或容量。运行时容量向下取整并至少为 1；非有限值忽略（不同于初始化回退默认值）。非法主题忽略。仅支持列出的三个 key；调低容量立即淘汰旧记录。
+
+```ts
+panel.setOption('theme', 'dark');
+panel.setOption('maxLogNumber', 500);
+panel.setOption('maxNetworkNumber', 100);
+```
+
+### `setSystemInfo(key, value)`
+
+参数：key: string，信息名称；value: string，显示内容。
+
+返回值：`void`。
+
+添加或覆盖同名自定义系统信息，进入报告的 custom 字段；不需要先打开系统面板。
+
+```ts
+panel.setSystemInfo('Build', '2026.11.04');
+panel.setSystemInfo('Environment', 'staging');
+```
+
+### `getReport(options?)`
+
+参数：options?: ReportOptions，默认 {}；字段见下表。
+
+返回值：`DiagnosticReport`。
+
+同步返回脱敏快照，不下载、不上传，也不打开报告窗口。exportEnabled 为 false 时仍可调用。since 非有限或小于 0 时抛出错误。
+
+```ts
+const report = panel.getReport({
+  since: Date.now() - 5 * 60 * 1000,
+  includeBodies: false,
+});
+const json = JSON.stringify(report, null, 2);
+```
+
+### `addPlugin(plugin)`
+
+参数：plugin: GravScopePlugin，已经配置事件和工具的插件实例。
+
+返回值：`void`。
+
+添加标签并同步触发 init、render。ID 必须唯一，与现有内置或自定义插件重名会抛错。添加后不会自动切换过去。
+
+```ts
+const plugin = new GravScope.Plugin('build', 'Build');
+plugin.on('render', element => {
+  element.textContent = 'Build 2026.11.04';
+});
+panel.addPlugin(plugin);
+panel.showTab('build');
+```
+
+### `removePlugin(id)`
+
+参数：id: string，要移除的插件 ID。
+
+返回值：`void`。
+
+触发 remove 并移除标签；ID 不存在则不操作。移除当前标签会切换到第一个剩余标签。插件 remove 回调抛错时仍移除标签，但异常会传给调用方。移除网络标签不停止网络采集。
+
+```ts
+panel.removePlugin('build');
+```
+
+### `destroy()`
+
+参数：无。
+
+返回值：`void`。
+
+移除界面，触发插件 remove，释放实例持有的采集钩子与监听，清空 GravScope.current。可重复调用；插件清理异常不会阻断销毁。实例不可重新启用，需要 new 创建新实例。
+
+```ts
+panel.destroy();
+const nextPanel = new GravScope();
+```
+
+### `getReport` 参数与返回结构
+
+| 参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `since` | `number` | `0` | Unix 毫秒时间戳，包含该时刻及之后的日志与请求（按请求开始时间）；不是秒，也不是持续时长。 |
+| `includeBodies` | `boolean` | `false` | 是否包含已采集的请求体与响应体；仍受采集截断和脱敏限制，不会补抓此前未采集的内容。 |
+
+| 返回字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `schemaVersion` | `1` | 报告结构版本。 |
+| `version` | `string` | GravScope 库版本。 |
+| `createdAt` | `string` | 生成时间，ISO 8601 字符串。 |
+| `page` | `string` | 脱敏后的当前页面 URL。 |
+| `device` | `{ userAgent: string; language: string; viewport: string }` | 浏览器、语言与视口信息。 |
+| `custom` | `unknown` | 脱敏后的自定义系统信息。 |
+| `logs` | `unknown[]` | 符合时间范围且仍保留的日志。 |
+| `network` | `unknown[]` | 符合时间范围且仍保留的请求。 |
+| `policy` | `string` | 采集和脱敏边界说明。 |
+
+`custom`、`logs`、`network` 的内容经过脱敏与截断，使用时先校验结构；不要当作原始对象。请在 `destroy()` 前取得报告。
+
+### 公开属性
+
+| 属性 | 类型与用途 | 示例 |
+| --- | --- | --- |
+| `GravScope.current` | `GravScope / null` — 当前实例；未初始化或销毁后为 null，只读取，不手动赋值。 | `GravScope.current?.show()` |
+| `GravScope.version` / `panel.version` | `string` — 只读库版本。 | `console.log(GravScope.version)` |
+| `GravScope.Plugin` | `typeof GravScopePlugin` — 插件构造函数，CDN 接入也可用。 | `new GravScope.Plugin('build', 'Build')` |
 
 ## 导出问题现场
 
@@ -194,7 +331,69 @@ plugin
 gc.addPlugin(plugin);
 ```
 
-插件事件：`init`、`render`、`show`、`hide`、`remove`。
+### 插件 API
+
+#### `new GravScopePlugin(id, name)`
+
+参数与行为：id: string，非空唯一标识；name: string，标签名称，空字符串时使用 id。
+
+返回值：`GravScopePlugin`.
+
+```ts
+const plugin = new GravScope.Plugin('build', 'Build');
+```
+
+#### `on(event, handler)`
+
+参数与行为：event 为下表事件名；handler 为对应回调。添加监听，不覆盖已有回调。
+
+返回值：`this`；`this` 支持链式调用。
+
+```ts
+plugin.on('render', element => { element.textContent = 'Ready'; });
+```
+
+#### `addTool(name, onClick)`
+
+参数与行为：name: string，按钮文字；onClick: () => void，点击回调，无参数。
+
+返回值：`this`；`this` 支持链式调用。
+
+```ts
+plugin.addTool('Refresh', () => console.info('Refresh requested'));
+```
+
+#### `getTools()`
+
+参数与行为：无。返回工具数组的浅拷贝；按钮对象本身仍共享，不应修改它们。
+
+返回值：`Array<{ name: string; onClick: () => void }>`.
+
+```ts
+const labels = plugin.getTools().map(tool => tool.name);
+```
+
+#### `emit(event, ...args)`
+
+参数与行为：event 为事件名；render 需要 HTMLElement，其余无参数。同步按注册顺序执行，回调抛错会中断并向外传播。通常由面板调度，手动调用不会切换 UI。
+
+返回值：`void`.
+
+```ts
+// Manual handler invocation only; does not open the tab.
+plugin.emit('show');
+```
+
+| 事件 | 回调签名 | 时机 |
+| --- | --- | --- |
+| `init` | `() => void` | 插件添加时执行，先于 render。 |
+| `render` | `(element: HTMLElement) => void` | 插件添加时执行，用 element 填充面板内容。 |
+| `show` | `() => void` | 标签激活或面板 show 时触发；可能重复触发，不保证只在真正可见时执行。 |
+| `hide` | `() => void` | 切换离开当前标签或调用 hide 时触发；可能重复。 |
+| `remove` | `() => void` | removePlugin 或 destroy 时清理定时器、事件等自有资源。 |
+
+请在 `addPlugin()` 前注册事件和工具。工具栏在标签激活时读取工具列表，追加工具不会即时重绘当前工具栏。`id`、`name` 为只读字符串；空 id 构造时抛错。没有 `off()` API，插件自行创建的监听和定时器应在 `remove` 中清理。
+
 
 日志工具栏提供「刷新页面」，执行普通刷新，当前内存日志会重置。发布包保留 `.map` 文件，但不再自动请求；需要调试库源码时可手动加载对应映射。
 

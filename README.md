@@ -127,6 +127,160 @@ const panel = new GravScope({
 
 `setOption()` currently supports only `theme`, `maxLogNumber` and `maxNetworkNumber`. To change language, mount target, entry or export settings, destroy and recreate the instance; previous records are not retained. Use `addPlugin()` / `removePlugin()` to manage plugins.
 
+## API reference
+
+Examples assume `const panel = new GravScope()` already exists. Methods are synchronous; `void` means no return value, no chaining and no Promise.
+
+### `show()`
+
+Parameters: None.
+
+Returns: `void`。
+
+Opens the panel and resets the unread count without clearing logs.
+
+```ts
+panel.show();
+```
+
+### `hide()`
+
+Parameters: None.
+
+Returns: `void`。
+
+Closes the panel; capture continues.
+
+```ts
+panel.hide();
+```
+
+### `showTab(id)`
+
+Parameters: id: string, the ID of an added panel.
+
+Returns: `void`。
+
+Activates a tab and opens the panel. Built-in IDs: log, network, element, storage, system; custom tabs use plugin.id. An unknown ID leaves the active tab unchanged but still opens the panel.
+
+```ts
+panel.showTab('network');
+```
+
+### `setOption(key, value)`
+
+Parameters: key: 'theme', value: 'light' / 'dark' / 'auto'; or key: 'maxLogNumber' / 'maxNetworkNumber', value: number.
+
+Returns: `void`。
+
+Updates theme or capacity immediately. Runtime limits are rounded down and clamped to at least 1; non-finite values are ignored (unlike initialization defaults). Invalid themes are ignored. Only the three listed keys are supported; lowering a limit evicts old records immediately.
+
+```ts
+panel.setOption('theme', 'dark');
+panel.setOption('maxLogNumber', 500);
+panel.setOption('maxNetworkNumber', 100);
+```
+
+### `setSystemInfo(key, value)`
+
+Parameters: key: string, information label; value: string, display value.
+
+Returns: `void`。
+
+Adds or replaces custom system information by key, also included in report.custom. The System panel need not be open.
+
+```ts
+panel.setSystemInfo('Build', '2026.11.04');
+panel.setSystemInfo('Environment', 'staging');
+```
+
+### `getReport(options?)`
+
+Parameters: options?: ReportOptions, defaults to {}; fields below.
+
+Returns: `DiagnosticReport`。
+
+Synchronously returns a redacted snapshot without downloading, uploading or opening a dialog. Available when exportEnabled is false. Throws if since is non-finite or negative.
+
+```ts
+const report = panel.getReport({
+  since: Date.now() - 5 * 60 * 1000,
+  includeBodies: false,
+});
+const json = JSON.stringify(report, null, 2);
+```
+
+### `addPlugin(plugin)`
+
+Parameters: plugin: GravScopePlugin, configured with handlers and tools.
+
+Returns: `void`。
+
+Adds a tab and synchronously emits init and render. IDs must be unique; conflicts with built-in or custom plugins throw. Does not automatically select the new tab.
+
+```ts
+const plugin = new GravScope.Plugin('build', 'Build');
+plugin.on('render', element => {
+  element.textContent = 'Build 2026.11.04';
+});
+panel.addPlugin(plugin);
+panel.showTab('build');
+```
+
+### `removePlugin(id)`
+
+Parameters: id: string, plugin ID to remove.
+
+Returns: `void`。
+
+Emits remove and removes the tab; unknown IDs are ignored. Removing the active tab selects the first remaining tab. If a remove handler throws, the tab is still removed and the error propagates. Removing Network does not stop capture.
+
+```ts
+panel.removePlugin('build');
+```
+
+### `destroy()`
+
+Parameters: None.
+
+Returns: `void`。
+
+Removes the UI, emits plugin remove, releases owned capture hooks and listeners, and clears GravScope.current. Safe to repeat; plugin cleanup errors do not block teardown. Create a new instance to start again.
+
+```ts
+panel.destroy();
+const nextPanel = new GravScope();
+```
+
+### `getReport` options and result
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `since` | `number` | `0` | Unix milliseconds; includes logs and requests at or after this time (request start time). Not seconds or a duration. |
+| `includeBodies` | `boolean` | `false` | Includes already captured request/response bodies, still subject to truncation and redaction; does not recover uncaptured data. |
+
+| Result field | Type | Description |
+| --- | --- | --- |
+| `schemaVersion` | `1` | Report schema version. |
+| `version` | `string` | GravScope library version. |
+| `createdAt` | `string` | Creation time as an ISO 8601 string. |
+| `page` | `string` | Redacted current page URL. |
+| `device` | `{ userAgent: string; language: string; viewport: string }` | Browser, language and viewport information. |
+| `custom` | `unknown` | Redacted custom system information. |
+| `logs` | `unknown[]` | Retained logs within the time range. |
+| `network` | `unknown[]` | Retained requests within the time range. |
+| `policy` | `string` | Capture and redaction policy. |
+
+Contents of `custom`, `logs` and `network` are sanitized and bounded; narrow their types before use rather than treating them as raw objects. Capture reports before calling `destroy()`.
+
+### Public properties
+
+| Property | Type and purpose | Example |
+| --- | --- | --- |
+| `GravScope.current` | `GravScope / null` — Current instance; null before initialization or after destruction. Read without assigning. | `GravScope.current?.show()` |
+| `GravScope.version` / `panel.version` | `string` — Read-only library version. | `console.log(GravScope.version)` |
+| `GravScope.Plugin` | `typeof GravScopePlugin` — Plugin constructor, also available through the CDN global. | `new GravScope.Plugin('build', 'Build')` |
+
 ## Diagnostic reports
 
 Set `exportEnabled: false` during initialization to hide the export UI (default: `true`). This is a UI preference; `getReport()` remains available.
@@ -158,7 +312,69 @@ panel.addPlugin(plugin);
 panel.removePlugin('build');
 ```
 
-Events: `init`, `render`, `show`, `hide`, `remove`.
+### Plugin API
+
+#### `new GravScopePlugin(id, name)`
+
+Parameters and behavior: id: string, nonempty unique ID; name: string, tab label, falls back to id when empty.
+
+Returns: `GravScopePlugin`.
+
+```ts
+const plugin = new GravScope.Plugin('build', 'Build');
+```
+
+#### `on(event, handler)`
+
+Parameters and behavior: event is a name from the event table; handler is the corresponding callback. Adds a listener without replacing previous handlers.
+
+Returns: `this`; `this` supports chaining.
+
+```ts
+plugin.on('render', element => { element.textContent = 'Ready'; });
+```
+
+#### `addTool(name, onClick)`
+
+Parameters and behavior: name: string, button label; onClick: () => void, click callback with no arguments.
+
+Returns: `this`; `this` supports chaining.
+
+```ts
+plugin.addTool('Refresh', () => console.info('Refresh requested'));
+```
+
+#### `getTools()`
+
+Parameters and behavior: None. Returns a shallow copy of the tools array; button objects remain shared and should not be mutated.
+
+Returns: `Array<{ name: string; onClick: () => void }>`.
+
+```ts
+const labels = plugin.getTools().map(tool => tool.name);
+```
+
+#### `emit(event, ...args)`
+
+Parameters and behavior: event is an event name; render requires an HTMLElement, others take no arguments. Calls handlers synchronously in registration order; exceptions interrupt and propagate. Normally dispatched by the panel; manual emission does not change UI state.
+
+Returns: `void`.
+
+```ts
+// Manual handler invocation only; does not open the tab.
+plugin.emit('show');
+```
+
+| Event | Handler | Timing |
+| --- | --- | --- |
+| `init` | `() => void` | Runs on plugin addition, before render. |
+| `render` | `(element: HTMLElement) => void` | Runs on addition; populate the provided panel element. |
+| `show` | `() => void` | Emitted on tab activation or panel show; may repeat and does not guarantee actual visibility. |
+| `hide` | `() => void` | Emitted when leaving a tab or hiding the panel; may repeat. |
+| `remove` | `() => void` | Use to clean up owned timers/listeners on removePlugin or destroy. |
+
+Register handlers and tools before `addPlugin()`. The toolbar reads tools on tab activation; adding tools does not immediately redraw an active toolbar. `id` and `name` are read-only strings; an empty id throws during construction. There is no `off()` API; clean up listeners and timers owned by your plugin in `remove`.
+
 
 ## Capture limits
 

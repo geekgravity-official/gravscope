@@ -58,7 +58,7 @@ export class Shell {
   private maskTimer = 0;
   private readyListener: (() => void) | null = null;
   private readonly options: ShellOptions;
-  private readonly entryButton: boolean;
+  private entryButton: boolean;
   private readonly target: HTMLElement | string | null;
 
   constructor(options: ShellOptions) {
@@ -195,6 +195,11 @@ export class Shell {
     this.button.setAttribute('aria-expanded', 'false');
     this.highlight(null);
     if (this.activeId) this.plugins.get(this.activeId)?.emit('hide');
+  }
+
+  setEntryButton(visible: boolean): void {
+    this.entryButton = visible;
+    this.button.hidden = this.opened || !visible;
   }
 
   setBadge(count: number): void {

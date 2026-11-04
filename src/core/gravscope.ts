@@ -89,10 +89,18 @@ export class GravScope {
     this.show();
   }
 
+  setOption(key: 'entryButton', value: boolean): void;
   setOption(key: 'theme', value: GravScopeTheme): void;
   setOption(key: 'maxLogNumber' | 'maxNetworkNumber', value: number): void;
-  setOption(key: 'theme' | 'maxLogNumber' | 'maxNetworkNumber', value: GravScopeTheme | number): void {
+  setOption(key: 'theme' | 'maxLogNumber' | 'maxNetworkNumber' | 'entryButton', value: GravScopeTheme | number | boolean): void {
     if (this.destroyed) return;
+    if (key === 'entryButton') {
+      if (typeof value === 'boolean') {
+        this.options.entryButton = value;
+        this.shell.setEntryButton(value);
+      }
+      return;
+    }
     if (key === 'theme') {
       if (value === 'light' || value === 'dark' || value === 'auto') {
         this.options.theme = value;

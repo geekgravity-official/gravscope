@@ -134,7 +134,7 @@ const gc = new GravScope({
 
 ### 初始化后修改配置
 
-`setOption()` 当前仅支持 `theme`、`maxLogNumber`、`maxNetworkNumber`。语言、挂载节点、入口与导出开关需 `destroy()` 后重新初始化，旧记录不会保留。插件可使用 `addPlugin()` / `removePlugin()` 管理。
+`setOption()` 当前仅支持 `theme`、`maxLogNumber`、`maxNetworkNumber`、`entryButton`。语言、挂载节点与导出开关需 `destroy()` 后重新初始化，旧记录不会保留。插件可使用 `addPlugin()` / `removePlugin()` 管理。
 
 ## API 方法
 
@@ -178,16 +178,19 @@ panel.showTab('network');
 
 ### `setOption(key, value)`
 
-参数：key: 'theme'，value: 'light' / 'dark' / 'auto'；或 key: 'maxLogNumber' / 'maxNetworkNumber'，value: number。
+参数：key: 'theme'，value: 'light' / 'dark' / 'auto'；或 key: 'maxLogNumber' / 'maxNetworkNumber'，value: number。 或 key: 'entryButton'，value: boolean。
 
 返回值：`void`。
 
-即时修改主题或容量。运行时容量向下取整并至少为 1；非有限值忽略（不同于初始化回退默认值）。非法主题忽略。仅支持列出的三个 key；调低容量立即淘汰旧记录。
+即时修改主题、容量或悬浮入口。运行时容量向下取整并至少为 1；非有限值忽略（不同于初始化回退默认值）。非法主题忽略。仅支持列出的四个 key；调低容量立即淘汰旧记录。entryButton 的运行时修改从 0.1.2 开始支持。false 立即隐藏悬浮按钮；true 在面板收起时显示按钮，面板打开时仍隐藏。设置不会收起面板或停止采集，非布尔值忽略。
 
 ```ts
 panel.setOption('theme', 'dark');
 panel.setOption('maxLogNumber', 500);
 panel.setOption('maxNetworkNumber', 100);
+// 隐藏 / 恢复悬浮入口
+panel.setOption('entryButton', false);
+panel.setOption('entryButton', true);
 ```
 
 ### `setSystemInfo(key, value)`
@@ -433,8 +436,8 @@ ES5 包的语法是 `var` 和 `function`，并带上 `Promise`、`Map`、`Object
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js).

@@ -14,7 +14,7 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Status
 
-**0.1.1 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
+**0.1.2 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
 
 ## Features
 
@@ -125,7 +125,7 @@ const panel = new GravScope({
 
 ### Changing options after initialization
 
-`setOption()` currently supports only `theme`, `maxLogNumber` and `maxNetworkNumber`. To change language, mount target, entry or export settings, destroy and recreate the instance; previous records are not retained. Use `addPlugin()` / `removePlugin()` to manage plugins.
+`setOption()` currently supports only `theme`, `maxLogNumber`, `maxNetworkNumber` and `entryButton`. To change language, mount target or export settings, destroy and recreate the instance; previous records are not retained. Use `addPlugin()` / `removePlugin()` to manage plugins.
 
 ## API reference
 
@@ -169,16 +169,19 @@ panel.showTab('network');
 
 ### `setOption(key, value)`
 
-Parameters: key: 'theme', value: 'light' / 'dark' / 'auto'; or key: 'maxLogNumber' / 'maxNetworkNumber', value: number.
+Parameters: key: 'theme', value: 'light' / 'dark' / 'auto'; or key: 'maxLogNumber' / 'maxNetworkNumber', value: number; or key: 'entryButton', value: boolean.
 
 Returns: `void`。
 
-Updates theme or capacity immediately. Runtime limits are rounded down and clamped to at least 1; non-finite values are ignored (unlike initialization defaults). Invalid themes are ignored. Only the three listed keys are supported; lowering a limit evicts old records immediately.
+Updates theme, capacity or the floating entry immediately. Runtime limits are rounded down and clamped to at least 1; non-finite values are ignored (unlike initialization defaults). Invalid themes are ignored. Only the four listed keys are supported; lowering a limit evicts old records immediately. Runtime entryButton support is available from 0.1.2. false hides the entry immediately; true shows it only while the panel is closed. It does not close the panel or stop capture. Non-boolean values are ignored.
 
 ```ts
 panel.setOption('theme', 'dark');
 panel.setOption('maxLogNumber', 500);
 panel.setOption('maxNetworkNumber', 100);
+// hide / restore the floating entry
+panel.setOption('entryButton', false);
+panel.setOption('entryButton', true);
 ```
 
 ### `setSystemInfo(key, value)`
@@ -402,7 +405,7 @@ npm run check:package
 
 Open the local URL printed by Vite. Add `?shot` to populate sample data. This sample deliberately triggers an error and a failed resource request.
 
-`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.1.tgz` for local evaluation.
+`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.2.tgz` for local evaluation.
 
 ## License
 
@@ -413,8 +416,8 @@ Open the local URL printed by Vite. Add `?shot` to populate sample data. This sa
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.1/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js).

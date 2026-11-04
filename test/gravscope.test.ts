@@ -29,6 +29,34 @@ function clickNet(marker: string): void {
 }
 
 describe('GravScope', () => {
+  it('toggles the entry button at runtime without stopping capture or changing panel state', () => {
+    const panel = new GravScope({ entryButton: false, defaultPlugins: [] });
+    const button = shadow().querySelector<HTMLButtonElement>('.gc-switch')!;
+    expect(button.hidden).toBe(true);
+    panel.setOption('entryButton', true);
+    expect(button.hidden).toBe(false);
+    panel.setOption('entryButton', false);
+    expect(button.hidden).toBe(true);
+    console.log('captured-with-entry-hidden');
+    expect(JSON.stringify(panel.getReport().logs)).toContain('captured-with-entry-hidden');
+    panel.show();
+    panel.setOption('entryButton', true);
+    expect(button.hidden).toBe(true);
+    expect(shadow().querySelector('.gc-panel')!.classList.contains('open')).toBe(true);
+    panel.hide();
+    expect(button.hidden).toBe(false);
+    panel.show();
+    panel.setOption('entryButton', false);
+    panel.hide();
+    expect(button.hidden).toBe(true);
+    panel.setOption('entryButton', 'true' as unknown as boolean);
+    expect(button.hidden).toBe(true);
+    panel.destroy();
+    panel.setOption('entryButton', true);
+    expect(button.hidden).toBe(true);
+    expect(document.querySelector('gravscope-root')).toBeNull();
+  });
+
   it('reloads the current page only when the reload tool is clicked', () => {
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
     try {

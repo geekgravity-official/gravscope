@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 — 2026-11-04
+
+- Allow `setOption('entryButton', boolean)` to toggle the floating entry at runtime without stopping capture. The entry stays hidden while the panel is open.
+
 ## 0.1.1 — 2026-11-03
 
 - Add a reload-page tool to the log panel.

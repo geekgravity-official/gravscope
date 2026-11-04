@@ -74,7 +74,58 @@ panel.setSystemInfo('Build', 'preview-1');
 panel.destroy();
 ```
 
-Log is always included. `defaultPlugins` controls the other built-in panels; it does not disable the underlying network capture hooks. Only one instance can be active at a time (`GravScope.current`).
+All initialization options are optional. `new GravScope()` uses the defaults below. The panel starts closed, while capture begins during initialization.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `theme` | `'light' / 'dark' / 'auto'` | `'auto'` | Panel theme; auto follows changes to the system color preference. |
+| `lang` | `'zh' / 'en'` | `自动检测 / Auto-detect` | Uses Chinese when navigator.language starts with zh, otherwise English. |
+| `defaultPlugins` | `BuiltinPlugin[]` | `['network', 'element', 'storage', 'system']` | Adds Network, Element, Storage and System in array order; duplicates and unknown names are ignored. Log is always included; pass [] for Log only. |
+| `maxLogNumber` | `number` | `1000` | Maximum retained log records; oldest records are evicted. This is a record count, not a byte limit. |
+| `maxNetworkNumber` | `number` | `200` | Maximum retained network records; oldest records are evicted. |
+| `entryButton` | `boolean` | `true` | Shows the floating entry button. With false, open the panel through show() or showTab(). |
+| `exportEnabled` | `boolean` | `true` | Shows the log toolbar export entry. false hides access to the report preview, copy and download controls; getReport() and the separate log-copy tool remain available. |
+| `target` | `HTMLElement / string / null` | `null → document.body` | Mount element or CSS selector. At mount time the selector must match an HTMLElement or an error is thrown. Omit or pass null to use body. |
+| `onReady` | `() => void` | `undefined` | Called once after the UI mounts, with no arguments. Does not wait for page resources or requests. |
+
+Use positive integers for both record limits. During initialization, fractions are rounded down (with a minimum effective limit of 1); zero, negatives, NaN, Infinity and non-numbers fall back to the respective default. Reducing a limit immediately evicts excess old records.
+
+`defaultPlugins` selects panels, not capture hooks. Hiding the entry button, export UI or panel does not stop capture. Call `destroy()` to release hooks owned by the instance. Only one instance can be active at a time; access it through `GravScope.current`.
+
+### Custom entry and export controls
+
+```ts
+const panel = new GravScope({
+  lang: 'en',
+  defaultPlugins: ['network', 'system'],
+  entryButton: false,
+  exportEnabled: false,
+});
+// Call from your own debug button's click handler:
+panel.show();
+// Or open a specific enabled panel:
+panel.showTab('network');
+```
+
+### Mount target and readiness
+
+```ts
+// First provide <div id="debug-root"></div> in the page.
+const panel = new GravScope({
+  target: '#debug-root', // An HTMLElement is also accepted.
+  onReady() {
+    GravScope.current?.show();
+  },
+});
+```
+
+`target` changes the mount location; the UI remains an overlay rather than normal content inside that container. When using the default body target before body exists, mounting waits for DOMContentLoaded.
+
+**`onReady` can run synchronously before the constructor returns.** Do not reference the not-yet-assigned `panel` variable inside this callback; use `GravScope.current`. Exceptions thrown by the callback are recorded as logs.
+
+### Changing options after initialization
+
+`setOption()` currently supports only `theme`, `maxLogNumber` and `maxNetworkNumber`. To change language, mount target, entry or export settings, destroy and recreate the instance; previous records are not retained. Use `addPlugin()` / `removePlugin()` to manage plugins.
 
 ## Diagnostic reports
 

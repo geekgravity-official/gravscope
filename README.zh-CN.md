@@ -83,7 +83,58 @@ const gc = new GravScope({
 });
 ```
 
-日志面板始终存在。`defaultPlugins` 决定另外四个内置面板。
+所有初始化参数均可省略，`new GravScope()` 即使用默认配置。初始化后默认收起面板，采集已经开始。
+
+| 参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `theme` | `'light' / 'dark' / 'auto'` | `'auto'` | 面板主题；auto 跟随系统配色变化。 |
+| `lang` | `'zh' / 'en'` | `自动检测 / Auto-detect` | 读取 navigator.language，以 zh 开头时用中文，其余用英文。 |
+| `defaultPlugins` | `BuiltinPlugin[]` | `['network', 'element', 'storage', 'system']` | 按数组顺序添加网络、元素、存储、系统面板；重复项去重，未知项忽略。日志面板始终包含，传 [] 只保留日志面板。 |
+| `maxLogNumber` | `number` | `1000` | 保留的日志记录数上限，超出后淘汰最早记录；不是字节大小限制。 |
+| `maxNetworkNumber` | `number` | `200` | 保留的网络请求记录数上限，超出后淘汰最早记录。 |
+| `entryButton` | `boolean` | `true` | 是否显示悬浮入口。false 时仍可通过实例的 show() 或 showTab() 打开。 |
+| `exportEnabled` | `boolean` | `true` | 是否显示日志工具栏的导出入口。false 同时隐藏报告预览内的复制与下载入口；getReport() 仍可调用，日志自身的复制工具不受影响。 |
+| `target` | `HTMLElement / string / null` | `null → document.body` | 挂载节点或 CSS 选择器。挂载时选择器必须匹配 HTMLElement，否则报错；省略或传 null 使用 body。 |
+| `onReady` | `() => void` | `undefined` | 界面挂载完成后执行一次，无参数；不代表页面资源或请求加载完成。 |
+
+两个数量上限建议传正整数。初始化时小数向下取整（最终至少 1）；0、负数、NaN、Infinity 或非数字会回退到各自默认值。减少上限会立即淘汰超量的旧记录。
+
+`defaultPlugins` 只选择面板，不关闭底层网络采集；`entryButton: false`、`exportEnabled: false` 和 `hide()` 也不停止采集。调试结束使用 `destroy()` 释放实例持有的采集钩子。同一时间只允许一个实例，可通过 `GravScope.current` 访问。
+
+### 自定义入口与导出开关
+
+```ts
+const gc = new GravScope({
+  lang: 'zh',
+  defaultPlugins: ['network', 'system'],
+  entryButton: false,
+  exportEnabled: false,
+});
+// 在你自己的调试按钮点击事件中调用：
+gc.show();
+// 也可以直接切到某个已启用的面板：
+gc.showTab('network');
+```
+
+### 挂载节点与就绪回调
+
+```ts
+// 页面中先准备好 <div id="debug-root"></div>
+const gc = new GravScope({
+  target: '#debug-root', // 也可直接传 HTMLElement
+  onReady() {
+    GravScope.current?.show();
+  },
+});
+```
+
+`target` 控制挂载位置，面板仍按浮层布局，不会变成容器内的普通内容。默认挂载到 body 时，若 body 尚未出现，会等待 DOMContentLoaded。
+
+**`onReady` 可能在构造函数返回之前同步执行。** 不要在上例回调中使用尚未赋值完成的 `gc`；使用 `GravScope.current`。回调抛出的异常会记入日志。
+
+### 初始化后修改配置
+
+`setOption()` 当前仅支持 `theme`、`maxLogNumber`、`maxNetworkNumber`。语言、挂载节点、入口与导出开关需 `destroy()` 后重新初始化，旧记录不会保留。插件可使用 `addPlugin()` / `removePlugin()` 管理。
 
 ## API
 

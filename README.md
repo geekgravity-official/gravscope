@@ -18,12 +18,11 @@ Website and live console screenshots from v0.2.1. [Try the playground](https://g
 
 ![GravScope website with quick-start links and a feature illustration](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-0.2.1.jpg)
 
-<details>
-<summary>View the live console</summary>
+Mobile console · iPhone 16 / iOS 18.6 simulator, inside GeekGravity
 
-![Live GravScope console with an expanded object, warning and error](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-0.2.1.jpg)
-
-</details>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-ios-0.2.1.jpg" alt="GravScope mobile console in GeekGravity on an iPhone 16 simulator" width="360" />
+</p>
 
 ## Status
 

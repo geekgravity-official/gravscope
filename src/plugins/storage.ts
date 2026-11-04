@@ -10,6 +10,8 @@ type Area = 'cookie' | 'local' | 'session';
 export function createStoragePlugin(lang: GravScopeLang): GravScopePlugin {
   const plugin = new GravScopePlugin('storage', t(lang, 'storage'));
   let area: Area = 'cookie';
+  let query = '';
+  let editor: HTMLElement | null = null;
   let list: HTMLElement | null = null;
   let form: HTMLFormElement | null = null;
   let errorLine: HTMLElement | null = null;
@@ -26,7 +28,7 @@ export function createStoragePlugin(lang: GravScopeLang): GravScopePlugin {
     if (errorLine) errorLine.hidden = true;
     let items: { key: string; value: string }[] = [];
     try {
-      items = readArea(area);
+      items = readArea(area).filter(item => `${item.key} ${item.value}`.toLowerCase().includes(query));
     } catch (error) {
       showError(error);
       return;
@@ -46,6 +48,7 @@ export function createStoragePlugin(lang: GravScopeLang): GravScopePlugin {
     bindCopy(copy, () => item.value, lang);
     const remove = el('button', { class: 'gc-icon', type: 'button', text: t(lang, 'delete') });
     remove.addEventListener('click', () => {
+      if (!window.confirm(lang === 'zh' ? `删除 ${item.key}？` : `Delete ${item.key}?`)) return;
       try {
         removeKey(area, item.key);
         renderItems();
@@ -58,29 +61,29 @@ export function createStoragePlugin(lang: GravScopeLang): GravScopePlugin {
   };
 
   const beginEdit = (item: { key: string; value: string }, valueButton: HTMLButtonElement) => {
-    const input = el('input', { class: 'gc-inline', type: 'text' }) as HTMLInputElement;
+    editor?.remove();
+    const editingArea = area;
+    const panel = el('section', { class: 'gc-storage-editor gc-form' }); editor = panel;
+    const input = el('textarea', { class: 'gc-pre', 'aria-label': lang === 'zh' ? '存储值' : 'Storage value', rows: '8' });
     input.value = item.value;
-    valueButton.replaceWith(input);
-    input.focus();
-    let done = false;
-    const commit = () => {
-      if (done) return;
-      done = true;
+    const json = el('input', { type: 'checkbox' });
+    try { JSON.parse(item.value); json.checked = true; input.value = JSON.stringify(JSON.parse(item.value), null, 2); } catch { /* Plain text remains editable. */ }
+    const error = el('p', { role: 'alert' });
+    const format = el('button', { type: 'button', text: lang === 'zh' ? '格式化 JSON' : 'Format JSON' });
+    format.onclick = () => { try { input.value = JSON.stringify(JSON.parse(input.value), null, 2); json.checked = true; error.textContent = ''; } catch (reason) { error.textContent = String(reason); } };
+    const cancel = el('button', { type: 'button', text: lang === 'zh' ? '取消' : 'Cancel' });
+    cancel.onclick = () => { panel.remove(); editor = null; valueButton.focus(); };
+    const save = el('button', { type: 'button', text: t(lang, 'save') });
+    save.onclick = () => {
       try {
-        writeArea(area, item.key, input.value);
-        renderItems();
-      } catch (error) {
-        showError(error);
-      }
+        if (json.checked) JSON.parse(input.value);
+        writeArea(editingArea, item.key, input.value);
+        panel.remove(); editor = null; renderItems();
+      } catch (reason) { error.textContent = String(reason); }
     };
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') commit();
-      if (event.key === 'Escape') {
-        done = true;
-        renderItems();
-      }
-    });
-    input.addEventListener('blur', commit);
+    panel.addEventListener('keydown', event => { if (event.key === 'Escape') { event.stopPropagation(); cancel.click(); } });
+    panel.append(el('strong', { text: item.key }), input, el('label', {}, [json, lang === 'zh' ? '校验 JSON' : 'Validate JSON']), format, save, cancel, error);
+    list?.before(panel); input.focus();
   };
 
   plugin.on('render', (pane) => {
@@ -98,6 +101,7 @@ export function createStoragePlugin(lang: GravScopeLang): GravScopePlugin {
       });
       button.dataset.area = item.id;
       button.addEventListener('click', () => {
+        editor?.remove(); editor = null;
         area = item.id;
         const nodes = segments.querySelectorAll('button');
         for (let index = 0; index < nodes.length; index += 1) {
@@ -133,7 +137,9 @@ export function createStoragePlugin(lang: GravScopeLang): GravScopePlugin {
     errorLine = el('div', { class: 'gc-empty' });
     errorLine.hidden = true;
     list = el('div', { class: 'gc-list' });
-    pane.append(segments, form, errorLine, list);
+    const search = el('input', { class: 'gc-search gc-storage-search', type: 'search', placeholder: lang === 'zh' ? '搜索键与值' : 'Search keys and values', 'aria-label': lang === 'zh' ? '搜索键与值' : 'Search keys and values' });
+    search.oninput = () => { query = search.value.trim().toLowerCase(); renderItems(); };
+    pane.append(segments, search, form, errorLine, list);
     renderItems();
   });
 

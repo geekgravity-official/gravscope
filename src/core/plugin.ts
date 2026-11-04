@@ -1,6 +1,7 @@
 export interface ToolButton {
   name: string;
   onClick: () => void;
+  placement?: 'primary' | 'more';
 }
 
 export interface PluginEvents {
@@ -38,8 +39,8 @@ export class GravScopePlugin {
     for (const handler of [...list]) handler(...args);
   }
 
-  addTool(name: string, onClick: () => void): this {
-    this.tools.push({ name, onClick });
+  addTool(name: string, onClick: () => void, options: { placement?: 'primary' | 'more' } = {}): this {
+    this.tools.push({ name, onClick, ...options });
     return this;
   }
 

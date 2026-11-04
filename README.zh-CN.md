@@ -72,7 +72,7 @@ gc.destroy();
 const gc = new GravScope({
   theme: 'auto', // 'light' | 'dark' | 'auto'
   lang: 'zh', // 默认跟随浏览器语言
-  defaultPlugins: ['system', 'network', 'element', 'storage'],
+  defaultPlugins: ['system', 'network', 'errors', 'element', 'storage'],
   maxLogNumber: 1000,
   maxNetworkNumber: 200,
   entryButton: true,
@@ -89,12 +89,17 @@ const gc = new GravScope({
 | --- | --- | --- | --- |
 | `theme` | `'light' / 'dark' / 'auto'` | `'auto'` | 面板主题；auto 跟随系统配色变化。 |
 | `lang` | `'zh' / 'en'` | `自动检测 / Auto-detect` | 读取 navigator.language，以 zh 开头时用中文，其余用英文。 |
-| `defaultPlugins` | `BuiltinPlugin[]` | `['network', 'element', 'storage', 'system']` | 按数组顺序添加网络、元素、存储、系统面板；重复项去重，未知项忽略。日志面板始终包含，传 [] 只保留日志面板。 |
+| `defaultPlugins` | `BuiltinPlugin[]` | `['network', 'errors', 'element', 'storage', 'system', 'timeline', 'performance', 'streams']` | 按数组顺序添加面板；异常、时间线、性能与实时连接从 0.2.0 提供；重复项去重，未知项忽略。日志面板始终包含，传 [] 只保留日志面板。 |
+| `capture` | `Partial<CaptureOptions>` | `{ console: true, network: true, error: true, navigation: true, performance: true, realtime: true }` | 0.2.0：独立控制采集通道，支持运行时部分更新。 |
+| `preserveLogs` | `boolean` | `false` | 0.2.0：刷新后保留脱敏日志；省略时沿用会话开关，详见下文。 |
 | `maxLogNumber` | `number` | `1000` | 保留的日志记录数上限，超出后淘汰最早记录；不是字节大小限制。 |
 | `maxNetworkNumber` | `number` | `200` | 保留的网络请求记录数上限，超出后淘汰最早记录。 |
 | `entryButton` | `boolean` | `true` | 是否显示悬浮入口。false 时仍可通过实例的 show() 或 showTab() 打开。 |
 | `exportEnabled` | `boolean` | `true` | 是否显示日志工具栏的导出入口。false 同时隐藏报告预览内的复制与下载入口；getReport() 仍可调用，日志自身的复制工具不受影响。 |
 | `target` | `HTMLElement / string / null` | `null → document.body` | 挂载节点或 CSS 选择器。挂载时选择器必须匹配 HTMLElement，否则报错；省略或传 null 使用 body。 |
+| `networkIgnore` | `string[]` | `[]` | 0.2.0：按 URL 子串排除后续请求和新实时连接，区分大小写；支持 setOption 替换。 |
+| `redactKeys` | `string[]` | `[]` | 0.2.0：追加自定义敏感字段，作用于报告和历史存档；支持 setOption 替换。 |
+| `onExport` | `(file: ExportFile) => void \| Promise<void>` | `undefined` | 0.2.0：接管 HTML/JSON 保存；未配置时维持浏览器下载。仅初始化配置，详见下文。 |
 | `onReady` | `() => void` | `undefined` | 界面挂载完成后执行一次，无参数；不代表页面资源或请求加载完成。 |
 
 两个数量上限建议传正整数。初始化时小数向下取整（最终至少 1）；0、负数、NaN、Infinity 或非数字会回退到各自默认值。减少上限会立即淘汰超量的旧记录。
@@ -134,7 +139,7 @@ const gc = new GravScope({
 
 ### 初始化后修改配置
 
-`setOption()` 当前仅支持 `theme`、`maxLogNumber`、`maxNetworkNumber`、`entryButton`。语言、挂载节点与导出开关需 `destroy()` 后重新初始化，旧记录不会保留。插件可使用 `addPlugin()` / `removePlugin()` 管理。
+`setOption()` 当前仅支持 `theme`、`maxLogNumber`、`maxNetworkNumber`、`entryButton`、`preserveLogs`、`capture`、`networkIgnore`、`redactKeys`（0.2.0）。语言、挂载节点与导出开关需 `destroy()` 后重新初始化，默认不保留旧记录；开启 preserveLogs 后可恢复受容量限制的历史快照。插件可使用 `addPlugin()` / `removePlugin()` 管理。
 
 ## API 方法
 
@@ -170,7 +175,7 @@ panel.hide();
 
 返回值：`void`。
 
-切换并打开面板。内置 ID 为 log、network、element、storage、system；自定义面板用 plugin.id。ID 不存在时保留当前标签，但仍打开面板。
+切换并打开面板。内置 ID 为 log、network、errors（0.2.0）、element、storage、system、timeline、performance、streams；自定义面板用 plugin.id。ID 不存在时保留当前标签，但仍打开面板。
 
 ```ts
 panel.showTab('network');
@@ -178,11 +183,11 @@ panel.showTab('network');
 
 ### `setOption(key, value)`
 
-参数：key: 'theme'，value: 'light' / 'dark' / 'auto'；或 key: 'maxLogNumber' / 'maxNetworkNumber'，value: number。 或 key: 'entryButton'，value: boolean。
+参数：key: 'theme'，value: 'light' / 'dark' / 'auto'；或 key: 'maxLogNumber' / 'maxNetworkNumber'，value: number。 或 key: 'entryButton' / 'preserveLogs'，value: boolean；或 key: 'capture'，value: Partial<CaptureOptions>；或 key: 'networkIgnore' / 'redactKeys'，value: string[]。新增诊断配置从 0.2.0 提供。
 
 返回值：`void`。
 
-即时修改主题、容量或悬浮入口。运行时容量向下取整并至少为 1；非有限值忽略（不同于初始化回退默认值）。非法主题忽略。仅支持列出的四个 key；调低容量立即淘汰旧记录。entryButton 的运行时修改从 0.1.2 开始支持。false 立即隐藏悬浮按钮；true 在面板收起时显示按钮，面板打开时仍隐藏。设置不会收起面板或停止采集，非布尔值忽略。
+即时修改主题、容量或悬浮入口。运行时容量向下取整并至少为 1；非有限值忽略（不同于初始化回退默认值）。非法主题忽略。还支持 preserveLogs（boolean）与 capture（Partial<CaptureOptions>），从 0.2.0 提供；仅支持文档列出的 key；调低容量立即淘汰旧记录。entryButton 的运行时修改从 0.1.2 开始支持。false 立即隐藏悬浮按钮；true 在面板收起时显示按钮，面板打开时仍隐藏。修改 entryButton 不会收起面板或停止采集；它的非布尔值忽略。
 
 ```ts
 panel.setOption('theme', 'dark');
@@ -212,7 +217,7 @@ panel.setSystemInfo('Environment', 'staging');
 
 返回值：`DiagnosticReport`。
 
-同步返回脱敏快照，不下载、不上传，也不打开报告窗口。exportEnabled 为 false 时仍可调用。since 非有限或小于 0 时抛出错误。
+同步返回脱敏快照，不下载、不上传，也不打开报告窗口。exportEnabled 为 false 时仍可调用。since 非有限或小于 0、报告超过 5 MiB、或筛选后日志/请求各超过 10000 条时抛出错误。
 
 ```ts
 const report = panel.getReport({
@@ -269,7 +274,8 @@ const nextPanel = new GravScope();
 | 参数 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `since` | `number` | `0` | Unix 毫秒时间戳，包含该时刻及之后的日志与请求（按请求开始时间）；不是秒，也不是持续时长。 |
-| `includeBodies` | `boolean` | `false` | 是否包含已采集的请求体与响应体；仍受采集截断和脱敏限制，不会补抓此前未采集的内容。 |
+| `redactKeys` | `string[]` | `[]` | 0.2.0：为本次报告追加敏感字段，不移除初始化规则；不修改实例配置。 |
+| `includeBodies` | `boolean` | `false` | 是否包含已采集的请求体、响应体和实时消息内容；仍受采集截断和脱敏限制，不会补抓此前未采集的内容。 |
 
 | 返回字段 | 类型 | 说明 |
 | --- | --- | --- |
@@ -280,6 +286,7 @@ const nextPanel = new GravScope();
 | `device` | `{ userAgent: string; language: string; viewport: string }` | 浏览器、语言与视口信息。 |
 | `custom` | `unknown` | 脱敏后的自定义系统信息。 |
 | `logs` | `unknown[]` | 符合时间范围且仍保留的日志。 |
+| `activity` | `unknown[]`（可选） | 0.2.0：时间范围内保留的导航、长任务和实时连接活动；旧报告可不含此字段。 |
 | `network` | `unknown[]` | 符合时间范围且仍保留的请求。 |
 | `policy` | `string` | 采集和脱敏边界说明。 |
 
@@ -293,11 +300,68 @@ const nextPanel = new GravScope();
 | `GravScope.version` / `panel.version` | `string` — 只读库版本。 | `console.log(GravScope.version)` |
 | `GravScope.Plugin` | `typeof GravScopePlugin` — 插件构造函数，CDN 接入也可用。 | `new GravScope.Plugin('build', 'Build')` |
 
+## 刷新后保留日志（0.2.0）
+
+在日志筛选栏勾选「保留日志」，或使用初始化参数 / 运行时 API：
+
+```ts
+const panel = new GravScope({ preserveLogs: true });
+panel.setOption('preserveLogs', false); // 停止保存并删除会话存档
+panel.setOption('preserveLogs', true);  // 保存当前保留的日志及之后的新记录
+```
+
+默认关闭；省略参数时会沿用当前标签页会话中上次的开关状态。显式传 `false` 会关闭并删除存档。隐藏面板不会关闭保存，`destroy()` 会保存最后快照并移除监听。
+
+- 使用同源 `sessionStorage`，用于同一标签页内的刷新或页面跳转；不使用 localStorage。浏览器恢复会话或复制标签页时可能保留 / 复制 sessionStorage，以浏览器实际行为为准。
+- 最多保存最近 200 条，且受 `maxLogNumber` 约束；存储 JSON 最多 131072 个 UTF-16 码元（约 256 KiB）。超限淘汰最早记录，单条超大记录也可能被淘汰。
+- 日志与错误作为脱敏的静态快照保存，不保存命令源码，不保存网络请求或本地存储。脱敏仍是启发式规则，不保证覆盖任意敏感业务文本。
+- 恢复后保留原始时间、分组关系和折叠状态，标记「历史」，并插入新页面会话分隔。新日志不会继承上一次的未结束分组。
+- 「清空」/ `console.clear()` 会删除当前日志及保存内容，开关偏好保留。关闭「保留日志」删除存档，不清空面板当前日志。
+- 保存合并间隔为 150ms，页面隐藏、pagehide、工具栏刷新和销毁时会刷新快照。系统强杀可能丢失最后尚未保存的记录；存储禁用或配额不足时无法保证恢复，但不会中断页面采集。
+
+## 调试流程增强（0.2.0）
+
+这一组功能从 0.2.0 提供。
+
+### 网络筛选与复制
+
+网络列表可组合 URL 搜索、全部/请求/静态资源/失败分类、请求方法和状态筛选。状态框支持精确值（如 `404`）、状态段（如 `4xx`）与 `pending`。详情中的 URL、请求头、请求体、响应头、响应体可单独复制；cURL 按 POSIX shell 规则引用参数，只支持 HTTP(S)。cURL 使用已采集数据，可能含凭证，不保证重现二进制、流和截断请求。
+
+### 暂停滚动与异常面板
+
+日志工具栏「暂停滚动」固定阅读位置，但继续采集；「新增 N 条 · 回到底部」或「最新」恢复跟随。重复日志更新也计入新增提示；手动向上滚动同样停止自动跟随。
+
+默认新增 `errors` 异常面板，集中查看 JavaScript 异常、未处理的 Promise 拒绝、资源加载失败和 console.error。按来源与完整文本聚合重复异常，可搜索、筛选来源和复制堆栈。「清空异常」也会从日志中移除这些错误，普通日志保留；异常受 `maxLogNumber` 的共享容量约束，不是独立无限历史。 异常按每页 100 组展示，搜索覆盖全部保留异常；大量记录时合并刷新，同页仍保留的堆栈不会因新错误到来而自动收起。翻页或筛选导致卡片离开当前页时，展开状态会重置。
+
+```ts
+panel.showTab('errors');
+```
+
+### 独立控制采集
+
+通过日志工具栏「采集设置」控制三个通道，或使用 API：
+
+```ts
+const panel = new GravScope({
+  capture: { console: true, network: false, error: true },
+});
+panel.setOption('capture', { network: true }); // 只修改指定通道
+panel.setOption('capture', { console: false, error: false });
+```
+
+`capture` 的类型是 `Partial<CaptureOptions>`，`console`、`network`、`error`、`navigation`、`performance`、`realtime` 均为 boolean，默认全部 true。运行时以部分更新合并，未提供的通道保持原状，非布尔值忽略；返回 void。
+
+关闭采集保留现有记录并释放对应钩子；关闭网络采集不取消页面请求，尚未完成的诊断记录标记为 Capture stopped。重新开启后记录新活动，不补采停用期间的日志或请求。console.error 属于 console 通道；全局异常、Promise 拒绝和资源加载异常属于 error 通道。网络失败记录与 error 通道独立。关闭 Console 后工具栏「清空」仍可用，但页面的 console.clear() 不再驱动面板清空。开关不跨刷新保存，与 preserveLogs 独立。
+
+### 报告导入回放
+
+官网「报告回放」支持选择或拖入 schemaVersion 为 1 的 JSON 报告。在本地按日志、异常、请求和活动分类搜索，保留日志分组关系；仅只读查看，不执行代码、重发请求或上传文件。文件最大 5 MB，日志和请求各最多 10000 条，活动最多 1000 条，每次显示 100 条，可继续加载；单条详情预览最多 20000 字符。清除或关闭页面后释放内存，导入失败会清除上一次显示，避免混淆。导入器兼容 0.1.2 导出的报告，包括组标题被容量裁剪掉的记录。
+
 ## 导出问题现场
 
 初始化传入 `exportEnabled: false` 可隐藏导出入口，默认 `true`。该选项只控制界面，`getReport()` 仍可调用。
 
-打开日志面板，点击底部「导出」。点击「复制报告」复制当前预览的脱敏 JSON；自动复制失败时会选中文本，也可使用「全选文本」后长按手动复制。可以选择全部已保留记录或最近 5 分钟，预览后保存：
+打开日志面板，点击底部「更多 → 导出」。点击「复制报告」复制当前预览的脱敏 JSON；自动复制失败时会选中文本，也可使用「全选文本」后长按手动复制。可以选择全部已保留记录或最近 5 分钟，预览后保存：
 
 - **离线 HTML**：在电脑浏览器中打开，按条展开日志和网络详情；不需要部署服务，也不加载外部资源或执行报告数据。
 - **JSON**：便于自行归档或接入其他排查工具。下载受限的浏览器可以手动复制预览内容。
@@ -356,9 +420,9 @@ const plugin = new GravScope.Plugin('build', 'Build');
 plugin.on('render', element => { element.textContent = 'Ready'; });
 ```
 
-#### `addTool(name, onClick)`
+#### `addTool(name, onClick, options?)`
 
-参数与行为：name: string，按钮文字；onClick: () => void，点击回调，无参数。
+参数与行为：name: string，按钮文字；onClick: () => void，点击回调，无参数。options?: { placement?: 'primary' | 'more' }，默认为主操作，more 放入更多菜单（0.2.0）。
 
 返回值：`this`；`this` 支持链式调用。
 
@@ -400,6 +464,20 @@ plugin.emit('show');
 
 日志工具栏提供「刷新页面」，执行普通刷新，当前内存日志会重置。发布包保留 `.map` 文件，但不再自动请求；需要调试库源码时可手动加载对应映射。
 
+## 工具栏与大量日志（0.2.0）
+
+日志工具栏固定显示「清空、暂停滚动、最新」，复制、Console、导出、刷新页面和采集设置放入「更多」。点击菜单外或按 Escape 可收起；从菜单执行操作后也会自动收起。
+
+超过 200 条保留记录时采用分段渲染：每页 200 条，额外最多 100 条分组上下文，使用「更早记录 / 更新记录」翻页。追加日志会合并为约 16ms 一次的界面更新；这不是固定行高的连续虚拟滚动。暂停/翻到旧记录时保持当前页，「最新」返回末页。对象展开状态在节点仍处于当前窗口时保留，离开窗口再返回会重建。
+
+搜索作用于全部保留日志，不只当前页；复制遵守当前筛选和折叠规则，覆盖所有匹配记录。`maxLogNumber` 控制数据保留量，分段显示不会删除数据。DOM 模拟覆盖 10000 条记录；实际手机滚动、帧率和内存仍需按[移动端验收记录](docs/mobile-validation.md)验证。
+
+自定义插件可以把次要操作放入更多菜单；未指定时优先显示，最多三个主按钮，其余自动折叠：
+
+```ts
+plugin.addTool('次要操作', () => console.info('action'), { placement: 'more' });
+```
+
 ## 本地开发
 
 ```bash
@@ -436,8 +514,60 @@ ES5 包的语法是 `var` 和 `function`，并带上 `Promise`、`Map`、`Object
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js).
+
+## 新增诊断与导出接入（0.2.0）
+
+新增 `timeline`、`performance`、`streams` 默认面板；异常可定位前后各 30 秒的日志、请求与路由。网络每页 100 条，存储支持搜索和 JSON 校验编辑。性能面板提供慢请求/大小排行与受浏览器支持限制的长任务记录；实时面板观察新 WebSocket/EventSource 连接。
+
+完整配置、运行时更新、数据上限和不覆盖的场景见 [增强调试说明](docs/diagnostics.md)。`setOption('networkIgnore', string[])` 与 `setOption('redactKeys', string[])` 返回 void，替换各自规则数组；不是追加。
+
+### onExport 文件导出回调
+
+```js
+new GravScope({
+  onExport: async ({ requestId, filename, mimeType, format, content }) => {
+    // appBridge 是宿主自行实现的桥接层，须提供 Promise 完成/失败回执。
+    await window.appBridge.saveDiagnosticFile({ requestId, filename, mimeType, content });
+  },
+});
+```
+
+`requestId` 为本次接管编号，可用于关联原生回执；`filename` 已带 `.html` / `.json`；`mimeType` 分别为 `text/html;charset=utf-8` / `application/json;charset=utf-8`；`format` 为 `html` / `json`；`content` 为脱敏后的文本，不是文件路径。原生按 UTF-8 保存或分享。
+
+配置回调后不再自动下载。支持同步 void 或 Promise<void>；抛错/拒绝时显示失败并可重试，不自动回退下载。实例级任务等待期间禁用两个导出按钮，关闭再打开仍然防重复；30 秒后显示等待提示。确认取消等待仅解除组件等待，不取消原生操作，再次导出可能重复。迟到回执不会覆盖新任务。`getReport()`、复制和全选文本不触发回调；`exportEnabled: false` 隐藏导出入口。文件后缀不能替代 WebView 的下载实现。
+
+查看 [onExport 完整接入协议、原生回执和上传说明](docs/export-integration.md)。
+
+### 清空与可靠性（0.2.0）
+
+`panel.clearAll()` 无参数，返回 void：清空日志、请求、活动、自定义系统信息和历史日志存档内容，并关闭旧报告预览；保留采集/历史开关与业务存储，不关闭业务连接，不取消已交给原生的导出。更多菜单入口先确认；API 直接执行，destroy 后调用无操作。原来各面板的清空按钮仍只清空对应记录。
+
+报告预览显示 JSON 的 UTF-8 字节大小，导出上限 5 MiB；HTML 转义后单独检查实际体积。getReport() 超限抛出 name 为 ReportLimitError 的错误，界面提示缩小时间范围、排除正文或清理后重试，不静默截断、不发送部分报告。
+
+采集初始化失败按通道回滚和降级，「采集设置」显示失败原因并允许重新勾选重试；挂载节点等基础配置错误仍会阻止初始化。日志界面提示对象是引用，展开/导出值可能变化。参见 [详细协议](docs/export-integration.md)。
+
+### 采集状态与发布前检查（0.2.0）
+
+`panel.getCaptureStatus(): CaptureStatusMap` 无参数，返回六个通道的独立状态副本：每项包含 `enabled: boolean`、`state: 'enabled' | 'disabled' | 'unavailable' | 'failed'` 和本地化 `detail: string`。修改返回值不会修改采集设置；destroy 后 enabled 均为 false。unavailable 表示当前环境缺少支持，failed 表示接口接管/订阅失败，可用 setOption('capture', {...}) 重试。
+
+各诊断面板显示相关通道的采集中/停用/不支持/失败状态，采集设置提供覆盖范围说明。实时面板明确只观察新建连接；长任务 API 不支持时不会显示成正在采集。状态不代表所有浏览器请求、worker 或其他 frame 都可见。
+
+```js
+const status = panel.getCaptureStatus();
+if (status.performance.state === 'unavailable') {
+  // 没有长任务记录不代表页面没有卡顿。
+}
+```
+
+`npm run check:release` 检查 package、lockfile、运行时版本以及网站 CDN 固定版本；发布前另执行严格模式，避免把未整理的增强误发布成旧版本。`npm run check:soak -- 1` 是 1 分钟合成持续采集与反复销毁检查，`npm run check:soak -- 30` 可运行 30 分钟。该检查需要先 build，使用 Node/happy-dom 与模拟连接，不能代替手机 WebView 或原生验收。
+
+## iframe 使用边界
+
+0.2.0 不包含 iframe 聚合或历史隔离增强。每个实例只采集当前 window，面板受 iframe 边界限制；父子页面同时初始化会各自显示入口。同源父子页面共享历史存储键，可能互相覆盖或清除历史，因此本版本不建议在父子页面同时启用 preserveLogs。iframe 内刷新只刷新当前 frame。
+
+原生文件保存、分享和权限由接入方实现和验收，不属于组件内置能力。

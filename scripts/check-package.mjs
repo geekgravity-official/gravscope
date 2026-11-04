@@ -26,11 +26,27 @@ for (const name of ['@geekgravity/gravscope', '@geekgravity/gravscope/modern']) 
 }
 for (const file of ['gravscope.iife.js', 'gravscope.modern.iife.js']) {
   const window = new Window({url: 'http://localhost'});
+  window.eval('window.WebSocket = class extends EventTarget { static OPEN = 1; constructor(url) { super(); this.url = url; this.readyState = 1; } send(value) { this.sent = value; } };');
+  const NativeSocket = window.WebSocket;
   window.eval(fs.readFileSync('./node_modules/@geekgravity/gravscope/dist/' + file, 'utf8'));
   assert.equal(typeof window.GravScope, 'function');
-  const panel = new window.GravScope({defaultPlugins: []});
+  let exported;
+  const panel = new window.GravScope({lang: 'en', defaultPlugins: [], onExport: file => { exported = file; }});
+  const socket = new window.WebSocket('wss://example.com');
+  socket.send('bundle-message');
+  assert.ok(socket instanceof NativeSocket);
+  assert.equal(socket.sent, 'bundle-message');
+  assert.ok(panel.getReport({includeBodies: true}).activity.some(item => item.detail === 'bundle-message'));
+  panel.show();
+  const root = window.document.querySelector('gravscope-root').shadowRoot;
+  [...root.querySelectorAll('button')].find(button => button.textContent === 'Export').click();
+  [...root.querySelectorAll('button')].find(button => button.textContent === 'JSON').click();
+  await Promise.resolve();
+  assert.equal(exported.format, 'json');
+  assert.ok(exported.filename.endsWith('.json'));
   assert.ok(window.document.querySelector('gravscope-root'));
   panel.destroy();
+  assert.equal(window.WebSocket, NativeSocket);
   assert.equal(window.document.querySelector('gravscope-root'), null);
   await window.happyDOM.close();
 }

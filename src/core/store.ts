@@ -12,6 +12,9 @@ export interface LogItem {
   depth: number;
   groupIds: number[];
   collapsed?: boolean;
+  errorSource?: 'runtime' | 'promise' | 'resource';
+  historical?: boolean;
+  boundary?: boolean;
   kind: LogKind;
   command?: string;
 }
@@ -58,7 +61,7 @@ export class LogStore {
     this.depth = this.groups.length;
   }
 
-  append(input: { level: LogLevel; args: unknown[]; kind?: LogKind; command?: string; collapsed?: boolean }): LogItem {
+  append(input: { level: LogLevel; args: unknown[]; kind?: LogKind; command?: string; collapsed?: boolean; boundary?: boolean; errorSource?: LogItem['errorSource'] }): LogItem {
     const kind = input.kind ?? 'normal';
     const item: LogItem = {
       id: ++this.seq,
@@ -70,14 +73,16 @@ export class LogStore {
       groupIds: this.groups.slice(),
       collapsed: input.collapsed,
       kind,
+      boundary: input.boundary,
+      errorSource: input.errorSource,
       command: input.command,
     };
     const last = this.items[this.items.length - 1];
     if (
-      last &&
+      last && !last.historical && !last.boundary && !item.boundary &&
       kind === 'normal' &&
       last.kind === 'normal' &&
-      last.level === item.level &&
+      last.level === item.level && last.errorSource === item.errorSource &&
       last.depth === item.depth &&
       last.groupIds.join(',') === item.groupIds.join(',') &&
       sameArgs(last.args, item.args)
@@ -91,6 +96,25 @@ export class LogStore {
     this.emit({ type: 'add', item });
     return item;
   }
+
+  restore(records: LogItem[]): void {
+    const ids = new Map<number, number>();
+    for (const record of records) {
+      const id = ++this.seq;
+      const groupIds = record.groupIds.map(old => ids.get(old)).filter((value): value is number => value !== undefined);
+      this.items.push({ ...record, id, groupIds, depth: groupIds.length, historical: true, command: undefined });
+      ids.set(record.id, id);
+    }
+    this.trim();
+  }
+
+  clearErrors(): void {
+    const ids = this.items.filter(item => item.level === 'error').map(item => item.id);
+    this.items = this.items.filter(item => item.level !== 'error');
+    if (ids.length) this.emit({ type: 'trim', ids });
+  }
+
+  resetGroups(): void { this.groups = []; this.depth = 0; }
 
   clear(): void {
     this.items = [];
@@ -164,6 +188,7 @@ export type NetEvent =
   | { type: 'clear' };
 
 export class NetStore {
+  shouldCapture: (url: string) => boolean = () => true;
   items: NetworkRecord[] = [];
   max = 200;
   private seq = 0;
@@ -205,9 +230,11 @@ export class NetStore {
       protocol: init.protocol ?? '',
       extra: init.extra ?? '',
     };
-    this.items.push(item);
-    this.trim();
-    this.emit({ type: 'add', item });
+    if (this.shouldCapture(item.url)) {
+      this.items.push(item);
+      this.trim();
+      this.emit({ type: 'add', item });
+    }
     return item;
   }
 
@@ -252,6 +279,8 @@ export class SystemStore {
       this.listeners.delete(listener);
     };
   }
+
+  clear(): void { this.custom = []; for (const listener of this.listeners) listener(); }
 
   set(key: string, value: string): void {
     const found = this.custom.find((item) => item.key === key);

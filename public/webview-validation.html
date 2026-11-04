@@ -1,0 +1,23 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GravScope WebView 验证</title>
+<style>body{font:16px system-ui;padding:16px;background:#f4f6fa;color:#152030}button,select{padding:12px;margin:5px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}textarea{width:95%;height:70px;font-size:16px}</style>
+<h2>GravScope WebView 验证</h2><p>仅合成数据；回调模拟不代表原生保存成功。</p>
+<button id="open">打开面板</button><button id="seed">生成分组和异常</button><button id="hide">隐藏面板</button>
+<label>导出回调<select id="mode"><option value="ok">模拟成功</option><option value="fail">模拟失败</option><option value="pending">保持等待</option></select></label>
+<textarea placeholder="粘贴报告，验证剪贴板"></textarea><pre id="result"></pre>
+<script src="/dist/gravscope.modern.iife.js?webview=2"></script><script>
+const result=document.querySelector('#result');
+const records=[];
+function record(value){records.push(value);result.textContent=JSON.stringify(records,null,2);}
+record({userAgent:navigator.userAgent,nativeWebView:!!window.ReactNativeWebView});
+const panel=new GravScope({lang:'zh',exportEnabled:true,preserveLogs:true,onExport(file){
+  record({format:file.format,filename:file.filename,mimeType:file.mimeType,requestId:file.requestId,bytes:new Blob([file.content]).size,hasChinese:file.content.includes('中文验证')});
+  if(document.querySelector('#mode').value==='fail')return Promise.reject(new Error('模拟宿主保存失败'));
+  if(document.querySelector('#mode').value==='pending')return new Promise(()=>{});
+  return Promise.resolve();
+}});
+function seed(){console.group('中文验证 · 外层');console.log('分组内第一条');console.groupCollapsed('嵌套分组');console.warn('嵌套警告');console.groupEnd();console.log('分组内最后一条');console.groupEnd();console.error('中文验证：合成错误');fetch('/mock.json');}
+document.querySelector('#seed').onclick=seed;
+document.querySelector('#open').onclick=()=>panel.show();
+document.querySelector('#hide').onclick=()=>panel.hide();
+seed();
+</script></html>

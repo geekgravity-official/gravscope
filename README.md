@@ -14,7 +14,7 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Status
 
-**0.1.2 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
+**0.2.0 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
 
 ## Features
 
@@ -58,7 +58,7 @@ Enable only in development or controlled testing environments. The command input
 const panel = new GravScope({
   theme: 'auto', // 'light' | 'dark' | 'auto'
   lang: 'en', // 'en' | 'zh'; defaults to browser language
-  defaultPlugins: ['network', 'element', 'storage', 'system'],
+  defaultPlugins: ['network', 'errors', 'element', 'storage', 'system', 'timeline', 'performance', 'streams'],
   maxLogNumber: 1000,
   maxNetworkNumber: 200,
   entryButton: true,
@@ -80,12 +80,17 @@ All initialization options are optional. `new GravScope()` uses the defaults bel
 | --- | --- | --- | --- |
 | `theme` | `'light' / 'dark' / 'auto'` | `'auto'` | Panel theme; auto follows changes to the system color preference. |
 | `lang` | `'zh' / 'en'` | `自动检测 / Auto-detect` | Uses Chinese when navigator.language starts with zh, otherwise English. |
-| `defaultPlugins` | `BuiltinPlugin[]` | `['network', 'element', 'storage', 'system']` | Adds Network, Element, Storage and System in array order; duplicates and unknown names are ignored. Log is always included; pass [] for Log only. |
+| `defaultPlugins` | `BuiltinPlugin[]` | `['network', 'errors', 'element', 'storage', 'system', 'timeline', 'performance', 'streams']` | Adds panels in array order; Errors, Timeline, Performance and Streams are available since 0.2.0; duplicates and unknown names are ignored. Log is always included; pass [] for Log only. |
+| `capture` | `Partial<CaptureOptions>` | `{ console: true, network: true, error: true, navigation: true, performance: true, realtime: true }` | Since 0.2.0: independent capture channels; supports partial runtime updates. |
+| `preserveLogs` | `boolean` | `false` | Since 0.2.0: retain sanitized logs across reloads; omission reuses the session toggle. See below. |
 | `maxLogNumber` | `number` | `1000` | Maximum retained log records; oldest records are evicted. This is a record count, not a byte limit. |
 | `maxNetworkNumber` | `number` | `200` | Maximum retained network records; oldest records are evicted. |
 | `entryButton` | `boolean` | `true` | Shows the floating entry button. With false, open the panel through show() or showTab(). |
 | `exportEnabled` | `boolean` | `true` | Shows the log toolbar export entry. false hides access to the report preview, copy and download controls; getReport() and the separate log-copy tool remain available. |
 | `target` | `HTMLElement / string / null` | `null → document.body` | Mount element or CSS selector. At mount time the selector must match an HTMLElement or an error is thrown. Omit or pass null to use body. |
+| `networkIgnore` | `string[]` | `[]` | Since 0.2.0: case-sensitive URL substrings excluding future requests/new realtime connections; runtime replacement supported. |
+| `redactKeys` | `string[]` | `[]` | Since 0.2.0: additional case-insensitive exact field names for report/history masking; runtime replacement supported. |
+| `onExport` | `(file: ExportFile) => void \| Promise<void>` | `undefined` | Since 0.2.0: take over HTML/JSON export. Initialization only; omission preserves browser downloads. |
 | `onReady` | `() => void` | `undefined` | Called once after the UI mounts, with no arguments. Does not wait for page resources or requests. |
 
 Use positive integers for both record limits. During initialization, fractions are rounded down (with a minimum effective limit of 1); zero, negatives, NaN, Infinity and non-numbers fall back to the respective default. Reducing a limit immediately evicts excess old records.
@@ -125,7 +130,7 @@ const panel = new GravScope({
 
 ### Changing options after initialization
 
-`setOption()` currently supports only `theme`, `maxLogNumber`, `maxNetworkNumber` and `entryButton`. To change language, mount target or export settings, destroy and recreate the instance; previous records are not retained. Use `addPlugin()` / `removePlugin()` to manage plugins.
+`setOption()` currently supports only `theme`, `maxLogNumber`, `maxNetworkNumber`, `entryButton`, `preserveLogs`, `capture`, `networkIgnore` and `redactKeys` (new diagnostic options are available since 0.2.0). To change language, mount target or export settings, destroy and recreate the instance; previous records are not retained by default; preserveLogs can restore a bounded historical snapshot. Use `addPlugin()` / `removePlugin()` to manage plugins.
 
 ## API reference
 
@@ -161,7 +166,7 @@ Parameters: id: string, the ID of an added panel.
 
 Returns: `void`。
 
-Activates a tab and opens the panel. Built-in IDs: log, network, element, storage, system; custom tabs use plugin.id. An unknown ID leaves the active tab unchanged but still opens the panel.
+Activates a tab and opens the panel. Built-in IDs: log, network, errors (0.2.0), element, storage, system, timeline, performance, streams (new diagnostics are available since 0.2.0); custom tabs use plugin.id. An unknown ID leaves the active tab unchanged but still opens the panel.
 
 ```ts
 panel.showTab('network');
@@ -169,11 +174,11 @@ panel.showTab('network');
 
 ### `setOption(key, value)`
 
-Parameters: key: 'theme', value: 'light' / 'dark' / 'auto'; or key: 'maxLogNumber' / 'maxNetworkNumber', value: number; or key: 'entryButton', value: boolean.
+Parameters: key: 'theme', value: 'light' / 'dark' / 'auto'; or key: 'maxLogNumber' / 'maxNetworkNumber', value: number; or key: 'entryButton' / 'preserveLogs', value: boolean; or key: 'capture', value: Partial<CaptureOptions>; or key: 'networkIgnore' / 'redactKeys', value: string[]. New diagnostic options are available since 0.2.0.
 
 Returns: `void`。
 
-Updates theme, capacity or the floating entry immediately. Runtime limits are rounded down and clamped to at least 1; non-finite values are ignored (unlike initialization defaults). Invalid themes are ignored. Only the four listed keys are supported; lowering a limit evicts old records immediately. Runtime entryButton support is available from 0.1.2. false hides the entry immediately; true shows it only while the panel is closed. It does not close the panel or stop capture. Non-boolean values are ignored.
+Updates theme, capacity or the floating entry immediately. Runtime limits are rounded down and clamped to at least 1; non-finite values are ignored (unlike initialization defaults). Invalid themes are ignored. Also accepts preserveLogs (boolean) and capture (Partial<CaptureOptions>), both available since 0.2.0. Only documented keys are supported; lowering a limit evicts old records immediately. Runtime entryButton support is available from 0.1.2. false hides the entry immediately; true shows it only while the panel is closed. It does not close the panel or stop capture. Non-boolean values are ignored.
 
 ```ts
 panel.setOption('theme', 'dark');
@@ -203,7 +208,7 @@ Parameters: options?: ReportOptions, defaults to {}; fields below.
 
 Returns: `DiagnosticReport`。
 
-Synchronously returns a redacted snapshot without downloading, uploading or opening a dialog. Available when exportEnabled is false. Throws if since is non-finite or negative.
+Synchronously returns a redacted snapshot without downloading, uploading or opening a dialog. Available when exportEnabled is false. Throws if since is non-finite or negative, the JSON report exceeds 5 MiB, or filtered logs/requests exceed 10000 each.
 
 ```ts
 const report = panel.getReport({
@@ -260,7 +265,8 @@ const nextPanel = new GravScope();
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `since` | `number` | `0` | Unix milliseconds; includes logs and requests at or after this time (request start time). Not seconds or a duration. |
-| `includeBodies` | `boolean` | `false` | Includes already captured request/response bodies, still subject to truncation and redaction; does not recover uncaptured data. |
+| `redactKeys` | `string[]` | `[]` | Since 0.2.0: additional keys for this report; merges with instance keys without changing configuration. |
+| `includeBodies` | `boolean` | `false` | Includes already captured request/response bodies and realtime message content, still subject to truncation and redaction; does not recover uncaptured data. |
 
 | Result field | Type | Description |
 | --- | --- | --- |
@@ -271,6 +277,7 @@ const nextPanel = new GravScope();
 | `device` | `{ userAgent: string; language: string; viewport: string }` | Browser, language and viewport information. |
 | `custom` | `unknown` | Redacted custom system information. |
 | `logs` | `unknown[]` | Retained logs within the time range. |
+| `activity` | optional `unknown[]` | Since 0.2.0: retained navigation, long-task and realtime activity within the time range; absent in older reports. |
 | `network` | `unknown[]` | Retained requests within the time range. |
 | `policy` | `string` | Capture and redaction policy. |
 
@@ -284,11 +291,68 @@ Contents of `custom`, `logs` and `network` are sanitized and bounded; narrow the
 | `GravScope.version` / `panel.version` | `string` — Read-only library version. | `console.log(GravScope.version)` |
 | `GravScope.Plugin` | `typeof GravScopePlugin` — Plugin constructor, also available through the CDN global. | `new GravScope.Plugin('build', 'Build')` |
 
+## Preserve logs across reloads (0.2.0)
+
+Enable **Preserve logs** in the log filter bar, or configure it through initialization / the runtime API:
+
+```ts
+const panel = new GravScope({ preserveLogs: true });
+panel.setOption('preserveLogs', false); // Stop saving and delete the session archive.
+panel.setOption('preserveLogs', true);  // Save retained logs and subsequent updates.
+```
+
+Off by default. When omitted, the option reuses the last toggle state in this tab session. Explicit false disables it and deletes the archive. Hiding the panel does not stop saving; destroy flushes the last snapshot and releases listeners.
+
+- Uses same-origin sessionStorage for reloads and navigation within a tab, not localStorage. Browser session restoration or tab duplication may retain/copy sessionStorage; behavior depends on the browser.
+- Retains at most the latest 200 records, also bounded by maxLogNumber. The serialized JSON is limited to 131072 UTF-16 code units (about 256 KiB); oldest records, including an individually oversized record, may be dropped.
+- Saves sanitized static log/error snapshots, excluding command source, network records and local storage. Heuristic redaction cannot identify all business-sensitive text.
+- Restores original timestamps, group relationships and collapse state, adds History badges and a new-page separator. New logs do not inherit an unfinished group from the previous page.
+- Clear / console.clear() clears both current and saved logs, retaining the toggle preference. Disabling preservation deletes the archive without clearing current logs.
+- Writes are coalesced over 150ms and flushed on page hiding, pagehide, the reload tool and destroy. Forced termination may lose unsaved records. Disabled/full storage can prevent restoration but does not interrupt capture.
+
+## Debugging workflow additions (0.2.0)
+
+These additions are available since 0.2.0.
+
+### Network filters and copying
+
+Combine URL search, all/request/static/failed categories, method and status filters. Status accepts exact codes such as `404`, ranges such as `4xx`, or `pending`. Details offer separate URL, request headers/body and response headers/body copying. cURL uses POSIX shell quoting and HTTP(S) URLs only. It uses captured data, may contain credentials, and cannot fully reproduce binary, streamed or truncated request bodies.
+
+### Pause scrolling and Errors panel
+
+**Pause scrolling** keeps your reading position while capture continues. The new-record button or **Latest** resumes following. Repeat updates count as new activity; scrolling upward also stops automatic following.
+
+The default `errors` panel groups JavaScript exceptions, unhandled Promise rejections, resource failures and console.error by source and full text. Search, source filtering and stack copying are available. **Clear errors** removes those errors from Log too, preserving normal logs. Errors share the maxLogNumber retention limit. Errors are paged in groups of 100; search covers all retained errors. Large-store updates are batched, and expanded stacks stay open while their cards remain on the current page. Changing pages or filters can reset expansion.
+
+```ts
+panel.showTab('errors');
+```
+
+### Capture channels
+
+Use **Capture settings** in the Log toolbar, or the API:
+
+```ts
+const panel = new GravScope({
+  capture: { console: true, network: false, error: true },
+});
+panel.setOption('capture', { network: true });
+panel.setOption('capture', { console: false, error: false });
+```
+
+`capture` is `Partial<CaptureOptions>`: console/network/error/navigation/performance/realtime booleans, all true by default. Runtime updates merge only supplied boolean fields; other channels remain unchanged and non-booleans are ignored. Returns void.
+
+Disabling a channel preserves existing records and releases its hooks. Disabling Network does not abort page requests; unfinished diagnostic records are marked Capture stopped. Re-enabling captures new activity without backfilling the disabled interval. console.error belongs to the console channel; global errors, Promise rejections and resource failures belong to error. Network failures are independent. With Console disabled, the panel Clear tool still works, but page console.clear() no longer clears the panel. Capture settings are not persisted across reloads and are independent of preserveLogs.
+
+### Report import and replay
+
+The website viewer accepts file selection or drag-and-drop of schemaVersion 1 JSON reports. Search Logs, Errors, Network and Activity locally, retaining log group relationships. Read-only: no code execution, request replay or file uploads. Limits: 5 MB per file, 10000 logs, 10000 requests and 1000 activity records, 100 displayed at a time with a load-more button, 20000 characters per detail preview. Clear or closing the page releases the report; invalid imports clear the previous display. Supports reports exported by 0.1.2, including logs whose group headings have been evicted.
+
 ## Diagnostic reports
 
 Set `exportEnabled: false` during initialization to hide the export UI (default: `true`). This is a UI preference; `getReport()` remains available.
 
-Choose **Export** in the log toolbar. **Copy report** copies the redacted JSON preview; **Select all** supports manual copying when WebView clipboard APIs are unavailable. Preview all retained records or the last five minutes, then save HTML or JSON. The HTML report opens offline without external resources or executable report data. If downloading is unsupported, copy the preview manually.
+Choose **More → Export** in the log toolbar. **Copy report** copies the redacted JSON preview; **Select all** supports manual copying when WebView clipboard APIs are unavailable. Preview all retained records or the last five minutes, then save HTML or JSON. The HTML report opens offline without external resources or executable report data. If downloading is unsupported, copy the preview manually.
 
 ```ts
 const snapshot = panel.getReport({
@@ -337,9 +401,9 @@ Returns: `this`; `this` supports chaining.
 plugin.on('render', element => { element.textContent = 'Ready'; });
 ```
 
-#### `addTool(name, onClick)`
+#### `addTool(name, onClick, options?)`
 
-Parameters and behavior: name: string, button label; onClick: () => void, click callback with no arguments.
+Parameters and behavior: name: string, button label; onClick: () => void, click callback with no arguments. Optional options: { placement?: 'primary' | 'more' }, default primary; more moves the tool into the overflow menu (0.2.0).
 
 Returns: `this`; `this` supports chaining.
 
@@ -390,6 +454,20 @@ Register handlers and tools before `addPlugin()`. The toolbar reads tools on tab
 
 The log toolbar includes **Reload page**, which performs a normal reload and resets in-memory logs. Packaged `.map` files remain available for manual debugging, without automatic source map requests.
 
+## Toolbar and large log lists (0.2.0)
+
+The Log toolbar keeps Clear, Pause scrolling and Latest visible. Copy, Console, Export, Reload page and Capture settings move into More. Outside clicks, Escape and choosing an action close the menu.
+
+Above 200 retained records, logs render in pages of 200 plus at most 100 group-context rows. Earlier / Newer navigate the pages. Incoming updates are coalesced over about 16ms; this is paged rendering, not continuous fixed-height virtual scrolling. Pausing or browsing older pages pins the current page; Latest returns to the tail. Expanded objects stay open while their nodes remain in the current window, and are rebuilt after leaving it.
+
+Search covers all retained records. Copy respects filtering/folding across all matching records, not just the displayed page. maxLogNumber still controls data retention; paging does not delete data. The 10000-record DOM test is not a device frame-rate or memory benchmark; see the [mobile validation checklist](docs/mobile-validation.md).
+
+Custom plugins may place secondary tools in More. By default at most three tools remain primary; others overflow:
+
+```ts
+plugin.addTool('Secondary action', () => console.info('action'), { placement: 'more' });
+```
+
 ## Local development
 
 Use Node.js 22.12+ and npm.
@@ -405,7 +483,7 @@ npm run check:package
 
 Open the local URL printed by Vite. Add `?shot` to populate sample data. This sample deliberately triggers an error and a failed resource request.
 
-`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.1.2.tgz` for local evaluation.
+`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.2.0.tgz` for local evaluation.
 
 ## License
 
@@ -416,8 +494,79 @@ Open the local URL printed by Vite. Add `?shot` to populate sample data. This sa
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.1.2/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js).
+
+## Extended diagnostics and export integration (0.2.0)
+
+The new default panels are `timeline`, `performance`, and `streams`. Error context opens a ±30-second timeline of retained logs, requests, navigation and activity; time proximity does not prove causation. Network renders at most 100 rows per page. Storage supports key/value search, explicit save/cancel, JSON formatting/validation, and deletion confirmation.
+
+Performance ranks completed requests taking at least 1000 ms (top 50), known resource/preview sizes (top 50), and new long tasks where the browser supports them. Sizes are not guaranteed transfer sizes; long tasks can include debugger overhead.
+
+Realtime capture observes new WebSocket/EventSource connections, WS sent/received messages, SSE default messages and named events registered through the observed instance (up to 100 names per connection). Text is capped at 2000 characters; binary is represented by size only. Activity shares a 1000-record bound independently of log/network capacity. Existing connections, workers, other frames and fetch-based SSE message bodies are not captured. Disabling capture never closes page-owned connections; re-enabling observes new connections only.
+
+```js
+const panel = new GravScope({
+  networkIgnore: ['/heartbeat', '/analytics'],
+  redactKeys: ['phone', 'customerId'],
+  capture: { navigation: true, performance: true, realtime: true },
+});
+panel.setOption('networkIgnore', ['/heartbeat']);
+panel.setOption('redactKeys', ['phone', 'customerId']);
+panel.setOption('capture', { realtime: false });
+```
+
+Rules are replaced, not appended. Up to 100 nonempty strings of at most 100 characters are accepted; other entries are ignored. URL exclusion is case-sensitive substring matching, not regex; it affects future requests/new connections, not existing retained data. Custom redaction matches exact object/JSON field names case-insensitively and attempts plain `key=value`/`key:value` masking. It applies to reports and persisted history, not live data, raw copying or cURL. `getReport({ redactKeys: ['extraField'] })` adds per-export keys to the instance rules. Built-in masking remains enabled. Activity is available in JSON/HTML reports and the website viewer; message bodies are excluded unless includeBodies is true.
+
+### onExport
+
+```ts
+import type { ExportFile, ExportHandler } from '@geekgravity/gravscope';
+// ExportFile: { requestId: string; filename: string; mimeType: string;
+//               format: 'html' | 'json'; content: string }
+```
+
+```js
+new GravScope({
+  async onExport(file) {
+    // appBridge is your application's integration, NOT a browser/GravScope API.
+    // Its Promise must resolve/reject on the native completion/failure callback.
+    await window.appBridge.saveDiagnosticFile({
+      requestId: file.requestId, filename: file.filename, mimeType: file.mimeType, content: file.content,
+    });
+  },
+});
+```
+
+The callback receives sanitized text, not a Blob, Base64 or file path. Filename: `gravscope-<report timestamp>.html`/`.json`; MIME: `text/html;charset=utf-8`/`application/json;charset=utf-8`. The native host writes UTF-8 and implements saving/sharing. Extensions do not enable downloads in a WebView by themselves.
+
+Omit onExport for the default Blob download. Providing it fully takes over the two file-export buttons; no automatic download or upload occurs. Return void or Promise<void>; throw/reject to show failure and allow retry. There is no boolean fallback contract. An instance-level pending task disables both export buttons even after the dialog is reopened; task ID and filename remain visible. Callback completion is not proof of native saving unless your bridge waits for that result. Closing the dialog does not cancel an in-flight native operation; after 30 seconds the UI offers a long-wait notice. Confirming Cancel waiting releases the component task only; native work may still continue, and a retry may duplicate it. Late completions cannot overwrite a new task. True native cancellation and cross-instance deduplication remain the host’s responsibility.
+
+Initialization only; there is no setOption('onExport'). getReport(), copying and manual text selection do not invoke it. exportEnabled:false hides the entry but retains getReport(). Native postMessage APIs need an application-level request/acknowledgement protocol; message transmission alone does not confirm a saved file. The application handles size limits, chunking, encoding, or any intentional upload.
+
+See [diagnostic details](docs/diagnostics.md) and [export integration guide](docs/export-integration.md) (Chinese). New APIs are available since 0.2.0. iOS simulator WKWebView smoke checks passed; physical-device and long-session validation remain open. Native file saving is implemented and validated by each integrator.
+
+### Reliability and clearing all diagnostics (0.2.0)
+
+`panel.clearAll(): void` clears retained logs, requests, activity, custom system info and persisted log records, and dismisses an open report preview. It preserves capture/history settings, page storage and page-owned connections. It does not cancel an export already handed to the application. The More menu asks for confirmation; the API does not. Calls after destroy are no-ops. Existing per-panel Clear buttons retain their narrower scope.
+
+JSON preview shows UTF-8 byte size; exports are limited to 5 MiB, with a separate actual-size check for HTML after escaping. getReport() also applies a size budget and the viewer's 10000-log/10000-request limit after time filtering. Failure throws an Error named ReportLimitError or shows a UI explanation; no partial report, download or callback is produced. Narrow the range, exclude bodies, or clear records to retry. Native bridges may impose a lower limit.
+
+Capture installation failures roll back the affected channel, keep other channels usable, and show a warning/status with retry in Capture settings. Fundamental mount/configuration errors still fail initialization. The log panel explicitly reminds users that logged objects are live references, not logging-time snapshots. Mobile/native behavior remains subject to device acceptance.
+
+### Capture status and release checks (0.2.0)
+
+`panel.getCaptureStatus(): CaptureStatusMap` takes no arguments and returns a detached map for all six channels. Each entry contains `enabled: boolean`, `state: 'enabled' | 'disabled' | 'unavailable' | 'failed'`, and localized `detail: string`. Unavailable means missing platform support; failed means hook/subscription installation failed. Retry via setOption('capture', ...). Mutation of the result does not affect capture, and destroyed instances report disabled channels.
+
+Panel banners show channel states; Capture settings explains coverage. Streams explicitly observe new connections only. Unsupported long-task APIs are not shown as actively collecting; absence of records does not prove absence of activity.
+
+`npm run check:release` checks package/lock/runtime versions and pinned website CDN references. Strict publish checks reject unpromoted Unreleased notes and package/website version mismatches. After build, `npm run check:soak -- 1` runs a one-minute synthetic capture/lifecycle check; use `-- 30` for thirty minutes. This uses Node/happy-dom and fake connections, not a real mobile browser/native bridge.
+
+## iframe boundaries
+
+0.2.0 does not include frame aggregation or history isolation. Each instance captures its own window and is clipped to its frame. Parent and child instances have separate entries. Same-origin frames share the history storage key and may overwrite or clear each other’s history; avoid enabling preserveLogs in both parent and child. Reload affects the current frame only.
+
+Native file saving, sharing and permissions are implemented and validated by each integrator.

@@ -111,14 +111,18 @@ describe('host isolation', () => {
     expect(GravScope.current).toBe(gc);
   });
 
-  it('restores earlier hooks if installing a later hook fails', () => {
+  it('rolls back a failed network channel while leaving the panel and other channels usable', () => {
     const descriptor = Object.getOwnPropertyDescriptor(window, 'fetch')!;
     Object.defineProperty(window, 'fetch', { configurable: true, get: () => originalFetch, set: () => { throw new Error('read only fetch'); } });
     try {
-      expect(() => new GravScope({ defaultPlugins: [] })).toThrow('read only fetch');
-      expect(console.log).toBe(originalLog);
+      const panel = new GravScope({ lang: 'en', defaultPlugins: [] });
+      expect(console.log).not.toBe(originalLog);
+      expect(JSON.stringify(panel.getReport())).toContain('network capture unavailable');
       expect(XMLHttpRequest.prototype.open).toBe(originalOpen);
-      expect(GravScope.current).toBeNull();
+      expect(GravScope.current).not.toBeNull();
+      Object.defineProperty(window, 'fetch', descriptor);
+      panel.setOption('capture', { network: true });
+      expect(window.fetch).not.toBe(originalFetch);
     } finally { Object.defineProperty(window, 'fetch', descriptor); }
   });
 

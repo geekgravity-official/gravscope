@@ -1,4 +1,4 @@
-import type { GravScopePlugin } from '../core/plugin';
+import type { GravScopePlugin, ToolButton } from '../core/plugin';
 import { t } from '../i18n';
 import type { GravScopeLang, GravScopeTheme } from '../types';
 import { clamp, el } from './dom';
@@ -187,6 +187,7 @@ export class Shell {
   }
 
   hide(): void {
+    this.toolbar.querySelector('details')?.removeAttribute('open');
     this.opened = false;
     window.clearTimeout(this.maskTimer);
     this.panel.classList.remove('open');
@@ -299,6 +300,10 @@ export class Shell {
     close.addEventListener('click', () => this.options.onHide());
     this.listen(document, 'keydown', (event) => {
       if ((event as KeyboardEvent).key === 'Escape' && this.opened) this.options.onHide();
+    });
+    this.listen(document, 'pointerdown', event => {
+      const more = this.toolbar.querySelector<HTMLDetailsElement>('.gc-more-tools');
+      if (more?.open && !event.composedPath().includes(more)) more.open = false;
     });
     this.bindEntry();
     this.bindResize(handle);
@@ -518,14 +523,30 @@ export class Shell {
     this.keepDock();
   };
 
-  private renderTools(tools: { name: string; onClick: () => void }[]): void {
+  private renderTools(tools: ToolButton[]): void {
     this.toolbar.replaceChildren();
     this.toolbar.hidden = tools.length === 0;
+    const more = el('details', { class: 'gc-more-tools' });
+    const summary = el('summary', { class: 'gc-tool', text: this.options.lang === 'zh' ? '更多' : 'More' });
+    const menu = el('div', { class: 'gc-more-menu', role: 'group', 'aria-label': this.options.lang === 'zh' ? '更多操作' : 'More actions' });
+    more.append(summary, menu);
+    more.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && more.open) {
+        event.preventDefault(); event.stopPropagation(); more.open = false; summary.focus();
+      }
+    });
+    let primary = 0;
     for (const tool of tools) {
+      const overflow = tool.placement === 'more' || primary >= 3;
       const button = el('button', { class: 'gc-tool', type: 'button', text: tool.name });
-      button.addEventListener('click', () => tool.onClick());
-      this.toolbar.append(button);
+      button.addEventListener('click', () => {
+        if (overflow) { more.open = false; summary.focus(); }
+        tool.onClick();
+      });
+      if (overflow) menu.append(button);
+      else { this.toolbar.append(button); primary++; }
     }
+    if (menu.childElementCount) this.toolbar.append(more);
   }
 
   private resolveTarget(): HTMLElement {

@@ -30,6 +30,7 @@ export function installConsoleHook(store: LogStore): () => void {
     };
   };
 
+  try {
   for (const level of LEVELS) wrapLevel(level);
 
   saved.table = console.table;
@@ -151,25 +152,42 @@ export function installConsoleHook(store: LogStore): () => void {
     counts.clear();
     timers.clear();
     for (const [key, method] of Object.entries(saved)) {
-      if ((console as unknown as Record<string, unknown>)[key] === installed[key]) (console as unknown as Record<string, unknown>)[key] = method;
+      try { if ((console as unknown as Record<string, unknown>)[key] === installed[key]) (console as unknown as Record<string, unknown>)[key] = method; } catch { /* The inactive wrapper must not prevent other hooks from being restored. */ }
     }
   };
+  } catch (error) {
+    active = false;
+    for (const [key, method] of Object.entries(saved)) {
+      try { (console as unknown as Record<string, unknown>)[key] = method; } catch { /* Protected members were never replaced. */ }
+    }
+    throw error;
+  }
 }
 
 export function installErrorHook(store: LogStore): () => void {
-  const onError = (event: ErrorEvent) => {
+  const onError = (event: Event) => {
+    if (event.target instanceof Element) {
+      const element = event.target;
+      if (element.getRootNode() instanceof ShadowRoot) return;
+      const url = element.getAttribute('src') || element.getAttribute('href') || element.getAttribute('data') || '';
+      store.append({ level: 'error', args: ['Resource load failed', element.tagName, url], errorSource: 'resource' });
+      return;
+    }
+    if (!(event instanceof ErrorEvent)) return;
     const args: unknown[] = [event.message || 'Script error'];
     if (event.filename) args.push(`${event.filename}:${event.lineno}:${event.colno}`);
     if (event.error) args.push(event.error);
-    store.append({ level: 'error', args });
+    store.append({ level: 'error', args, errorSource: 'runtime' });
   };
   const onRejection = (event: PromiseRejectionEvent) => {
-    store.append({ level: 'error', args: ['Uncaught (in promise)', event.reason] });
+    store.append({ level: 'error', args: ['Uncaught (in promise)', event.reason], errorSource: 'promise' });
   };
-  window.addEventListener('error', onError);
-  window.addEventListener('unhandledrejection', onRejection);
+  try {
+    window.addEventListener('error', onError, true);
+    window.addEventListener('unhandledrejection', onRejection);
+  } catch (error) { window.removeEventListener('error', onError, true); window.removeEventListener('unhandledrejection', onRejection); throw error; }
   return () => {
-    window.removeEventListener('error', onError);
+    window.removeEventListener('error', onError, true);
     window.removeEventListener('unhandledrejection', onRejection);
   };
 }

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ExportFile, GravScopeOptions } from '../src';
 import { GravScope } from '../src/index';
 import { LogStore, NetStore, SystemStore } from '../src/core/store';
 import { captureReport, reportHTML, sanitize } from '../src/report/snapshot';
@@ -9,14 +10,59 @@ afterEach(() => {
 });
 
 describe('diagnostic reports', () => {
-  const openReport = () => {
-    const gc = new GravScope({ lang: 'en', defaultPlugins: [] });
+  const openReport = (options: GravScopeOptions = {}) => {
+    const gc = new GravScope({ lang: 'en', defaultPlugins: [], ...options });
     gc.show();
     console.log({ token: 'PRIVATE_COPY_TOKEN', message: 'copy-report-marker' });
     const root = document.querySelector('gravscope-root')!.shadowRoot!;
     [...root.querySelectorAll<HTMLButtonElement>('.gc-tool')].find(button => button.textContent === 'Export')!.click();
     return root;
   };
+
+  it('hands off named, typed and redacted files without a browser download; blocks duplicate exports', async () => {
+    let resolve!: () => void;
+    const handler = vi.fn((_file: ExportFile) => new Promise<void>(done => { resolve = done; }));
+    const download = vi.spyOn(URL, 'createObjectURL');
+    const root = openReport({ onExport: handler });
+    const json = [...root.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'JSON')!;
+    const html = [...root.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Save offline report')!;
+    json.click(); html.click(); json.click();
+    expect(handler).toHaveBeenCalledTimes(1); expect(json.disabled).toBe(true); expect(html.disabled).toBe(true);
+    const file = handler.mock.calls[0][0];
+    expect(file.filename).toMatch(/^gravscope-.*\.json$/); expect(file.mimeType).toBe('application/json;charset=utf-8'); expect(file.format).toBe('json');
+    expect(file.content).toBe(root.querySelector<HTMLTextAreaElement>('.gc-report-preview')!.value);
+    expect(file.content).not.toContain('PRIVATE_COPY_TOKEN'); expect(download).not.toHaveBeenCalled();
+    resolve(); await vi.waitFor(() => expect(json.disabled).toBe(false));
+    html.click(); expect(handler.mock.calls[1][0].filename).toMatch(/\.html$/); expect(handler.mock.calls[1][0].mimeType).toBe('text/html;charset=utf-8');
+    expect(handler.mock.calls[1][0].content).toContain('<!doctype html>');
+    root.querySelector<HTMLButtonElement>('.gc-report-head button')!.click(); resolve(); await Promise.resolve();
+    expect(root.querySelector('.gc-report')).toBeNull();
+  });
+
+  it('handles sync throws and rejected exports without fallback, then allows retry and copy', async () => {
+    const handler = vi.fn<(_: ExportFile) => void | Promise<void>>().mockImplementationOnce(() => { throw new Error('native failure'); }).mockRejectedValueOnce(new Error('denied')).mockResolvedValue(undefined);
+    const download = vi.spyOn(URL, 'createObjectURL');
+    const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    const root = openReport({ onExport: handler });
+    const json = [...root.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'JSON')!;
+    json.click(); await vi.waitFor(() => expect(json.disabled).toBe(false));
+    expect(root.querySelector('.gc-report-summary')!.textContent).toContain('Application export failed');
+    json.click(); await vi.waitFor(() => expect(json.disabled).toBe(false));
+    expect(download).not.toHaveBeenCalled();
+    json.click(); await vi.waitFor(() => expect(root.querySelector('.gc-report-summary')!.textContent).toContain('callback completed'));
+    GravScope.current!.getReport(); root.querySelector<HTMLButtonElement>('.gc-report-copy')!.click();
+    await vi.waitFor(() => expect(write).toHaveBeenCalled()); expect(handler).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps default download filenames and MIME types when no callback is configured', () => {
+    const blob = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+    let filename = '';
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { filename = this.download; });
+    const root = openReport();
+    [...root.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'JSON')!.click();
+    expect(filename).toMatch(/^gravscope-.*\.json$/);
+    expect((blob.mock.calls[0][0] as Blob).type).toBe('application/json;charset=utf-8');
+  });
 
   it('hides the export entry when disabled while retaining the report API', () => {
     const gc = new GravScope({ lang: 'en', defaultPlugins: [], exportEnabled: false });

@@ -52,6 +52,15 @@ if (params.has('shot')) {
 if (params.has('autotest')) void runSelfCheck(gc);
 
 function runAction(act: string): void {
+  if (act === 'preserve-reload') {
+    gc.setOption('preserveLogs', true);
+    console.error('刷新前的示例错误', { access_token: 'demo-only-token' });
+    gc.destroy(); // Flush the last history snapshot before navigation.
+    location.reload();
+  }
+  if (act === 'errors') { console.error(new Error('异常面板示例')); gc.showTab('errors'); }
+  if (act === 'log-burst') { for (let i = 0; i < 25; i++) console.log('示例日志', i); gc.showTab('log'); }
+
   if (act === 'group' || act === 'group-collapsed') {
     if (act === 'group-collapsed') console.groupCollapsed('订单诊断（默认折叠）');
     else console.group('订单诊断（默认展开）');

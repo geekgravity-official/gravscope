@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import type { GravScopeLang } from '../types';
 import { expectOwnResource } from '../capture/network';
 import { canPreviewImage, describePayload, payloadLabel } from '../format/payload';
+import { requestCurl } from '../format/curl';
 import { bindCopy, el } from '../ui/dom';
 import { imageThumb } from '../ui/value-view';
 
@@ -17,13 +18,23 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
   let filters: HTMLElement | null = null;
   let empty: HTMLElement | null = null;
   let detailId: number | null = null;
+  let detailDirty = false;
   let filter: NetFilter = 'all';
   let query = '';
+  let methodFilter = '';
+  let statusFilter = '';
   let searchBar: HTMLElement | null = null;
   let count: HTMLElement | null = null;
   const rows = new Map<number, HTMLElement>();
+  let anchor: number | null = null, start = 0, timer = 0;
+  let eligible: NetworkRecord[] = [];
+  let pager: HTMLElement, pageLabel: HTMLElement, older: HTMLButtonElement, newer: HTMLButtonElement;
 
   const passes = (item: NetworkRecord) => {
+    if (methodFilter && item.method.toUpperCase() !== methodFilter) return false;
+    if (statusFilter) {
+      if (statusFilter === 'pending' ? !item.pending : item.pending || (statusFilter.endsWith('xx') ? Math.floor(item.status / 100) !== Number(statusFilter[0]) : String(item.status) !== statusFilter)) return false;
+    }
     if (query && !`${item.url} ${item.method} ${item.status} ${item.error}`.toLowerCase().includes(query)) return false;
     if (filter === 'request') return item.kind === 'xhr' || item.kind === 'fetch' || item.kind === 'beacon';
     if (filter === 'static') return item.kind === 'resource' || item.kind === 'navigation';
@@ -33,13 +44,26 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
 
   const syncEmpty = () => {
     if (!empty) return;
-    let visible = 0;
-    for (const row of rows.values()) {
-      if (!row.hidden) visible += 1;
+    window.clearTimeout(timer); timer = 0;
+    eligible = store.items.filter(passes);
+    start = anchor === null ? Math.max(0, eligible.length - 100) : eligible.findIndex(item => item.id >= anchor!);
+    if (start < 0) start = Math.max(0, eligible.length - 100);
+    const selected = store.items.length <= 100 ? store.items : eligible.slice(start, start + 100);
+    const ids = new Set(selected.map(item => item.id));
+    for (const [id, row] of rows) if (!ids.has(id)) { row.remove(); rows.delete(id); }
+    const offset = list?.scrollTop ?? 0;
+    for (const item of selected) { if (!rows.has(item.id)) appendRow(item); paint(rows.get(item.id)!, item); list?.append(rows.get(item.id)!); }
+    if (list) list.scrollTop = offset;
+    empty.hidden = eligible.length > 0;
+    empty.textContent = t(lang, query || methodFilter || statusFilter || filter !== 'all' ? 'noMatches' : 'emptyNet');
+    if (count) count.textContent = `${eligible.length} / ${store.items.length}`;
+    if (pager) {
+      pager.hidden = detailId !== null || eligible.length <= 100;
+      pageLabel.textContent = `${eligible.length ? start + 1 : 0}–${Math.min(eligible.length, start + 100)} / ${eligible.length}`;
+      older.disabled = start === 0; newer.disabled = start + 100 >= eligible.length;
     }
-    empty.hidden = visible > 0;
-    empty.textContent = t(lang, query || filter !== 'all' ? 'noMatches' : 'emptyNet');
-    if (count) count.textContent = `${visible} / ${rows.size}`;
+    if (detailId !== null && detailDirty) { const item = store.items.find(item => item.id === detailId); if (item) { const offset = detail?.scrollTop ?? 0; showDetail(item); if (detail) detail.scrollTop = offset; } }
+
   };
 
   const showList = () => {
@@ -48,11 +72,13 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
     if (list) list.hidden = false;
     if (filters) filters.hidden = false;
     if (searchBar) searchBar.hidden = false;
+    if (pager) pager.hidden = eligible.length <= 100;
   };
 
   const showDetail = (item: NetworkRecord) => {
     if (!detail || !list) return;
-    detailId = item.id;
+    detailId = item.id; detailDirty = false;
+    if (pager) pager.hidden = true;
     list.hidden = true;
     if (filters) filters.hidden = true;
     if (searchBar) searchBar.hidden = true;
@@ -64,10 +90,20 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
     bindCopy(copy, () => detailText(item, lang), lang);
     const actions = el('div', { class: 'gc-detail-bar' });
     actions.append(back, copy);
+    const copyUrl = el('button', { class: 'gc-back', type: 'button', text: 'URL' });
+    bindCopy(copyUrl, () => item.url, lang);
+    actions.append(copyUrl);
+    try {
+      requestCurl(item);
+      const curl = el('button', { class: 'gc-back gc-copy-curl', type: 'button', text: 'cURL' });
+      bindCopy(curl, () => requestCurl(item), lang);
+      actions.append(curl);
+    } catch { /* Non-HTTP records cannot be replayed with cURL. */ }
     const shownUrl = payloadLabel(item.url);
     const title = el('h3', { text: `${methodLabel(item)} ${shownUrl === item.url ? softWrapUrl(item.url) : shownUrl}` });
     const thumb = imageThumb(item.url);
     detail.append(actions);
+    detail.append(el('p', { class: 'gc-meta', text: lang === 'zh' ? 'cURL 使用已采集的请求信息，可能含凭证；二进制、流或截断内容不能完整重放。' : 'cURL uses captured request data and may contain credentials; binary, streamed or truncated bodies cannot be fully replayed.' }));
     if (thumb) detail.append(thumb);
     detail.append(title);
     detail.append(block(t(lang, 'general'), generalText(item, lang), lang));
@@ -154,14 +190,24 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
     const search = el('input', { class: 'gc-search', type: 'search', placeholder: t(lang, 'searchNet'), 'aria-label': t(lang, 'searchNet') }) as HTMLInputElement;
     count = el('span', { class: 'gc-result-count' });
     search.addEventListener('input', () => {
-      query = search.value.trim().toLowerCase();
+      query = search.value.trim().toLowerCase(); anchor = null;
       for (const item of store.items) {
         const row = rows.get(item.id);
         if (row) row.hidden = !passes(item);
       }
       syncEmpty();
     });
-    searchBar.append(search, count);
+    const applyFilters = () => {
+      anchor = null;
+      for (const item of store.items) { const row = rows.get(item.id); if (row) row.hidden = !passes(item); }
+      syncEmpty();
+    };
+    const method = el('select', { class: 'gc-level-select gc-net-method', 'aria-label': lang === 'zh' ? '请求方法' : 'Request method' });
+    for (const value of ['', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']) method.append(el('option', { value, text: value || (lang === 'zh' ? '全部方法' : 'All methods') }));
+    method.addEventListener('change', () => { methodFilter = method.value; applyFilters(); });
+    const status = el('input', { class: 'gc-search gc-net-status', placeholder: lang === 'zh' ? '状态：500 / 5xx / pending' : 'Status: 500 / 5xx / pending', 'aria-label': lang === 'zh' ? '状态码筛选' : 'Status filter' });
+    status.addEventListener('input', () => { statusFilter = status.value.trim().toLowerCase(); applyFilters(); });
+    searchBar.append(search, method, status, count);
     filters = el('div', { class: 'gc-filters gc-net-filters' });
     const names: NetFilter[] = ['all', 'request', 'static', 'failed'];
     for (const name of names) {
@@ -173,7 +219,7 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
       });
       button.dataset.net = name;
       button.addEventListener('click', () => {
-        filter = name;
+        filter = name; anchor = null;
         const nodes = filters?.querySelectorAll('.gc-filter') ?? [];
         for (let index = 0; index < nodes.length; index += 1) {
           const node = nodes[index] as HTMLElement;
@@ -193,42 +239,29 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
     list.append(empty);
     detail = el('div', { class: 'gc-detail' });
     detail.hidden = true;
-    pane.append(searchBar, filters, list, detail);
-    for (const item of store.items) appendRow(item);
+    older = el('button', { class: 'gc-tool gc-net-older', text: lang === 'zh' ? '更早记录' : 'Earlier' });
+    newer = el('button', { class: 'gc-tool gc-net-newer', text: lang === 'zh' ? '更新记录' : 'Newer' });
+    pageLabel = el('span'); pager = el('div', { class: 'gc-log-pages' }, [older, pageLabel, newer]);
+    older.onclick = () => { anchor = eligible[Math.max(0, start - 100)]?.id ?? null; syncEmpty(); if (list) list.scrollTop = 0; };
+    newer.onclick = () => { anchor = eligible[Math.min(Math.max(0, eligible.length - 100), start + 100)]?.id ?? null; syncEmpty(); if (list) list.scrollTop = 0; };
+    pane.append(searchBar, filters, pager, list, detail);
     syncEmpty();
-    const unsubscribe = store.subscribe((event) => {
-      if (event.type === 'add') {
-        appendRow(event.item);
-        syncEmpty();
-      } else if (event.type === 'update') {
-        const row = rows.get(event.item.id);
-        if (row) paint(row, event.item);
-        if (detailId === event.item.id) showDetail(event.item);
-        syncEmpty();
-      } else if (event.type === 'trim') {
-        for (const id of event.ids) {
-          rows.get(id)?.remove();
-          rows.delete(id);
-          if (detailId === id) showList();
-        }
-        syncEmpty();
-      } else if (event.type === 'clear') {
-        rows.clear();
-        detailId = null;
-        if (list) {
-          list.replaceChildren();
-          if (empty) list.append(empty);
-          list.hidden = false;
-        }
-        if (filters) filters.hidden = false;
-        if (searchBar) searchBar.hidden = false;
-        if (detail) detail.hidden = true;
-        syncEmpty();
+    const schedule = () => { if (store.items.length <= 100) syncEmpty(); else if (!timer) timer = window.setTimeout(syncEmpty, 16); };
+    const unsubscribe = store.subscribe(event => {
+      if (event.type === 'clear') {
+        anchor = null; rows.clear(); detail?.replaceChildren(); list?.replaceChildren(empty!); showList(); syncEmpty();
+      } else {
+        if (event.type === 'update' && event.item.id === detailId) detailDirty = true;
+        if (event.type === 'trim' && detailId !== null && event.ids.includes(detailId)) showList();
+        schedule();
       }
     });
-    plugin.on('remove', unsubscribe);
+    plugin.on('remove', () => { unsubscribe(); window.clearTimeout(timer); rows.clear(); });
+
   });
 
+  plugin.on('show', syncEmpty);
+  plugin.addTool(t(lang, 'latest'), () => { anchor = null; showList(); syncEmpty(); if (list) list.scrollTop = list.scrollHeight; });
   plugin.addTool(t(lang, 'clear'), () => store.clear());
   return plugin;
 }

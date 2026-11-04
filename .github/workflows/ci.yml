@@ -15,7 +15,9 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm run check:release
       - run: npm run typecheck
       - run: npm test
+      - run: node scripts/check-report-viewer.mjs
       - run: npm run build
       - run: npm run check:package

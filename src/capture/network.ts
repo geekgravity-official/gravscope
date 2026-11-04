@@ -39,7 +39,7 @@ function consumeOwnResource(url: string, startTime: number): boolean {
   return false;
 }
 
-export function installNetworkHook(store: NetStore): () => void {
+export function installNetworkHook(store: NetStore, includeExisting = true): () => void {
   const restore: Array<() => void> = [];
   try {
     if (typeof XMLHttpRequest !== 'undefined') restore.push(hookXHR(store));
@@ -47,13 +47,13 @@ export function installNetworkHook(store: NetStore): () => void {
     if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
       restore.push(hookBeacon(store));
     }
-    restore.push(hookResources(store));
+    restore.push(hookResources(store, includeExisting));
   } catch (error) {
     for (const fn of restore.reverse()) { try { fn(); } catch { /* Continue rollback. */ } }
     throw error;
   }
   return () => {
-    for (const fn of restore) fn();
+    for (const fn of restore) { try { fn(); } catch { /* Continue releasing other hooks. */ } }
   };
 }
 
@@ -67,6 +67,7 @@ function hookXHR(store: NetStore): () => void {
   const headers = new WeakMap<XMLHttpRequest, Record<string, string>>();
   const bound = new WeakSet<XMLHttpRequest>();
 
+  try {
   proto.open = function open(
     this: XMLHttpRequest,
     method: string,
@@ -146,6 +147,13 @@ function hookXHR(store: NetStore): () => void {
     if (proto.send === installed.send) proto.send = origSend;
     if (proto.setRequestHeader === installed.setRequestHeader) proto.setRequestHeader = origSetHeader;
   };
+  } catch (error) {
+    active = false;
+    for (const [key, original] of [['open', origOpen], ['send', origSend], ['setRequestHeader', origSetHeader]] as const) {
+      try { (proto as unknown as Record<string, unknown>)[key] = original; } catch { /* Protected native member. */ }
+    }
+    throw error;
+  }
 }
 
 function hookFetch(store: NetStore): () => void {
@@ -153,6 +161,9 @@ function hookFetch(store: NetStore): () => void {
   let active = true;
   const wrapped = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (!active) return original.call(window, input, init);
+    let excluded = false;
+    try { excluded = !store.shouldCapture(resolveUrl(input)); } catch { /* Ignore diagnostic URL inspection errors. */ }
+    if (excluded) return original.call(window, input, init);
     const started = now();
     let record: NetworkRecord | undefined;
     try {
@@ -349,7 +360,7 @@ interface TimedEntry extends PerformanceEntry {
 
 const RESOURCE_TAGS = ['img', 'script', 'link', 'video', 'audio', 'source', 'iframe', 'track', 'embed', 'object'];
 
-function hookResources(store: NetStore): () => void {
+function hookResources(store: NetStore, includeExisting: boolean): () => void {
   const restore: Array<() => void> = [];
   const byElement = new WeakMap<Element, NetworkRecord>();
   const seen = new Set<string>();
@@ -393,28 +404,31 @@ function hookResources(store: NetStore): () => void {
     window.removeEventListener('load', onResourceEvent, true);
   });
 
-  restore.push(watchPerformance(store, seen));
-  restore.push(watchDom(store, byElement));
+  restore.push(watchPerformance(store, seen, includeExisting));
+  restore.push(watchDom(store, byElement, includeExisting));
   return () => {
-    for (const fn of restore) fn();
+    for (const fn of restore) { try { fn(); } catch { /* Continue releasing other hooks. */ } }
   };
 }
 
-function watchPerformance(store: NetStore, seen: Set<string>): () => void {
+function watchPerformance(store: NetStore, seen: Set<string>, includeExisting: boolean): () => void {
   if (typeof PerformanceObserver === 'undefined') return () => undefined;
+  const started = includeExisting ? 0 : now();
   let observer: PerformanceObserver;
   try {
     observer = new PerformanceObserver((list) => {
       const entries = list.getEntries();
-      for (let index = 0; index < entries.length; index += 1) applyEntry(store, seen, entries[index]);
+      for (let index = 0; index < entries.length; index += 1) {
+        if (entries[index].startTime >= started) applyEntry(store, seen, entries[index]);
+      }
     });
   } catch {
     return () => undefined;
   }
   let buffered = false;
   try {
-    observer.observe({ type: 'resource', buffered: true });
-    observer.observe({ type: 'navigation', buffered: true });
+    observer.observe({ type: 'resource', buffered: includeExisting });
+    observer.observe({ type: 'navigation', buffered: includeExisting });
     buffered = true;
   } catch {
     try {
@@ -428,7 +442,7 @@ function watchPerformance(store: NetStore, seen: Set<string>): () => void {
       return () => undefined;
     }
   }
-  if (!buffered) replayEntries(store, seen);
+  if (!buffered && includeExisting) replayEntries(store, seen);
   return () => observer.disconnect();
 }
 
@@ -497,7 +511,7 @@ function applyEntry(store: NetStore, seen: Set<string>, entry: PerformanceEntry)
   store.update(target);
 }
 
-function watchDom(store: NetStore, byElement: WeakMap<Element, NetworkRecord>): () => void {
+function watchDom(store: NetStore, byElement: WeakMap<Element, NetworkRecord>, includeExisting: boolean): () => void {
   if (typeof MutationObserver === 'undefined' || !document.documentElement) return () => undefined;
   const consider = (node: Element, fresh: boolean) => {
     if (isInternal(node)) return;
@@ -512,7 +526,7 @@ function watchDom(store: NetStore, byElement: WeakMap<Element, NetworkRecord>): 
     const found = node.querySelectorAll(RESOURCE_TAGS.join(','));
     for (let index = 0; index < found.length; index += 1) consider(found[index], fresh);
   };
-  scan(document.documentElement, false);
+  if (includeExisting) scan(document.documentElement, false);
   const observer = new MutationObserver((mutations) => {
     for (let index = 0; index < mutations.length; index += 1) {
       const mutation = mutations[index];

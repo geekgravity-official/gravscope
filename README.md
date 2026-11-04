@@ -12,6 +12,19 @@ Inspect logs, requests, page elements and storage directly on a mobile web page.
 
 GravScope is an independent implementation, not a fork or drop-in replacement of vConsole.
 
+## Preview
+
+Website and live console screenshots from v0.2.1. [Try the playground](https://geekgravity-official.github.io/gravscope/).
+
+![GravScope website with quick-start links and a feature illustration](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-0.2.1.jpg)
+
+<details>
+<summary>View the live console</summary>
+
+![Live GravScope console with an expanded object, warning and error](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-0.2.1.jpg)
+
+</details>
+
 ## Status
 
 **0.2.1 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.

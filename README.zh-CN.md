@@ -10,6 +10,19 @@
 
 GravScope 是独立实现，解决和 [vConsole](https://github.com/Tencent/vConsole) 同类的问题。它不是 vConsole 的分支，接口看起来接近，但不能当作 vConsole 的替代包直接替换。
 
+## 界面预览
+
+v0.2.1 官网与实际日志面板截图。[打开在线实验台](https://geekgravity-official.github.io/gravscope/)。
+
+![GravScope 官网首页，展示项目定位、接入入口与功能示意](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-0.2.1.jpg)
+
+<details>
+<summary>查看实际调试面板</summary>
+
+![实际运行的 GravScope 日志面板，展示展开对象、警告和错误](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-0.2.1.jpg)
+
+</details>
+
 ## 功能
 
 - 日志：`console.log / info / warn / error / debug / table / group / dir / trace / count / time`，未捕获错误和 Promise 拒绝。字符串里的换行和缩进按原文显示，JSON 文本不再转义引号。普通对象、数组、Map、Set、URL 和二进制数据默认收成一行，点开头的箭头再按层级展开，DOM 节点按类型摘要，错误会带出堆栈，`console.trace` 也收成可展开的调用栈

@@ -514,11 +514,11 @@ ES5 包的语法是 `var` 和 `function`，并带上 `Promise`、`Map`、`Object
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js).
 
 ## 新增诊断与导出接入（0.2.0）
 
@@ -566,8 +566,20 @@ if (status.performance.state === 'unavailable') {
 
 `npm run check:release` 检查 package、lockfile、运行时版本以及网站 CDN 固定版本；发布前另执行严格模式，避免把未整理的增强误发布成旧版本。`npm run check:soak -- 1` 是 1 分钟合成持续采集与反复销毁检查，`npm run check:soak -- 30` 可运行 30 分钟。该检查需要先 build，使用 Node/happy-dom 与模拟连接，不能代替手机 WebView 或原生验收。
 
-## iframe 使用边界
+## iframe 使用边界（0.2.1）
 
-0.2.0 不包含 iframe 聚合或历史隔离增强。每个实例只采集当前 window，面板受 iframe 边界限制；父子页面同时初始化会各自显示入口。同源父子页面共享历史存储键，可能互相覆盖或清除历史，因此本版本不建议在父子页面同时启用 preserveLogs。iframe 内刷新只刷新当前 frame。
+每个实例只采集当前 window，面板受 iframe 边界限制，刷新只作用于当前框架。历史按固定框架结构的位置隔离；同源父子、兄弟、嵌套页面不共用存储键。动态增删、重排或复用位置仍可能恢复旧位置历史，这些场景暂不建议开启 preserveLogs。没有跨框架日志聚合。详见 [隔离范围与实测](docs/diagnostics.md)。
 
-原生文件保存、分享和权限由接入方实现和验收，不属于组件内置能力。
+原生文件保存、分享和权限由接入方实现和验收。
+
+## 基础页面性能报告（0.2.1）
+
+性能面板和系统面板使用同一组导航/绘制指标：重定向、DNS、连接、TLS、请求/导航到首字节、文档下载、DOM 可交互、DOMContentLoaded、Load、FP/FCP，以及文档传输/压缩/解压大小。性能面板可搜索与复制，JSON/HTML 报告和本地回放均包含 performance 字段。
+
+```js
+const report = panel.getReport();
+const load = report.performance?.metrics.load;
+if (load?.state === 'available') console.log(load.value, load.unit);
+```
+
+每项为 `{ value: number | null, unit: 'ms' | 'bytes', state: 'available' | 'pending' | 'unavailable' }`。0 是有效观测值，不支持或未提供时为 null。Load 不等于业务就绪；当前文档数据不代表 SPA 路由耗时或 BFCache 恢复耗时。本轮不提供标准 LCP/CLS/INP 评分。完整字段、采集开关与清空语义见 [性能说明](docs/diagnostics.md)。

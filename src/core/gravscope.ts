@@ -288,7 +288,7 @@ export class GravScope {
     }
     for (const node of this.shell.panel.querySelectorAll<HTMLElement>('[data-capture-summary]')) {
       const keys = node.dataset.captureSummary!.split(',') as (keyof CaptureOptions)[];
-      node.textContent = keys.map(key => `${key}: ${labels[statuses[key].state]}`).join(' · ');
+      node.textContent = keys.map(key => `${key === 'performance' ? (this.options.lang === 'zh' ? '长任务' : 'Long tasks') : key}: ${labels[statuses[key].state]}`).join(' · ');
       node.title = keys.map(key => statuses[key].detail).join('\n');
       if (keys.includes('realtime')) node.textContent += this.options.lang === 'zh' ? ' · 仅新建连接' : ' · New connections only';
     }

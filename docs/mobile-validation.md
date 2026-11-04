@@ -72,3 +72,29 @@
 发现并修复：采集状态与日志对象提示继承 `.gc-meta` 的 `flex: 1`，占据大块空白并挤压列表。改为不伸展、允许换行；重新构建并绕过脚本缓存后在同一 WebView 确认恢复正常。
 
 测试页的“模拟成功”只返回 Promise，不发送原生保存消息，不代表文件落盘。等待超时、取消等待、旋转、后台恢复、大数据长时运行及物理设备仍待验收。宿主自身存在离线/API 连接提示，不属于本次组件测试结果。
+
+### iframe 基础隔离实测 — 2026-11-04（0.2.1 发布前构建）
+
+环境：同一 iPhone 16 / iOS 18.6 模拟器、GeekGravity 的 WKWebView；独立本机端口 5181，加载包含 iframe 隔离改动的现代 IIFE。页面显示 UA 含 GeekGravityApp，nativeWebView 为 true。未修改宿主、安装 App 或进行线上发布。
+
+实际点击验收页按钮后，7 项断言全部通过：
+
+1. 顶层、子页 A、子页 B、A 内嵌套页各自只采集自己的标记日志。
+2. 报告路径依次为 `[]`、`[0]`、`[1]`、`[0,0]`，顶层标记为 top。
+3. 同源历史使用四个独立存储键。
+4. 刷新子页 A 后，A 和其嵌套页恢复各自历史。
+5. 清空 A 后，父页、B 和嵌套页的历史存储内容逐字保持不变。
+6. 关闭 A 的历史保留，只移除 A 的存储键。
+7. `sandbox="allow-scripts"` 的不透明源 iframe 中 sessionStorage 访问实际被拒绝，但仍能采集并通过 getReport 导出当前日志。
+
+另已实际打开子页 A 的面板：显示在 iframe 边界内，没有覆盖父页，清空后的列表为空、保留日志开关为关闭状态。这里“导出”指报告对象生成，不代表文件保存。sandbox 结果通过验收页自身 postMessage 返回，**不是组件新增了跨框架聚合功能**。
+
+复现：`npm run build` 后运行 `npm run dev -- --port 5181`，在 GeekGravity 中打开 `geekgravity://browser?url=http%3A%2F%2F127.0.0.1%3A5181%2Fiframe-validation.html`，点击“运行嵌套验收”。测试页位于仓库根目录 iframe-validation.html / iframe-validation.js，不随 npm 库打包。会清空该测试地址所用的诊断历史，只使用合成数据。
+
+未覆盖：普通跨域站点、动态 iframe 重排/替换、物理 iPhone、Android WebView，以及不同窗口之间的日志聚合。
+
+### 页面性能实测 — 2026-11-04
+
+同一 iPhone 16 / iOS 18.6 模拟器 GeekGravity WebView，打开本地 performance-validation.html，使用候选现代 IIFE。真实浏览器快照中 requestTTFB 2 ms、navigationTTFB 3 ms、domInteractive 33 ms、DOMContentLoaded/Load 41 ms、FCP 39 ms；主文档 transferSize 1410 bytes，encoded/decoded 1110 bytes。数值只描述该次本机测试，不是产品性能基准。FP 未提供、HTTP 页面 TLS 不可用；页面报告存在 nativeWebView: true。已实际打开性能面板并查看数据、滚动列表。
+
+本轮自动化共 114 项通过，另覆盖零值、未完成加载、API 拒绝、快照副本、HTML/JSON、长任务关闭及 clearAll 后的浏览器计时语义。原生文件保存、真机全平台和标准 Web Vitals 仍不在此次验收范围。

@@ -332,6 +332,7 @@ export function createLogPlugin(store: LogStore, lang: GravScopeLang, runCommand
     older.addEventListener('click', () => { paused = true; follow = false; anchor = eligible[Math.max(0, pageStart - PAGE_SIZE)]?.id ?? null; syncEmpty(); syncUnseen(); if (list) list.scrollTop = 0; });
     newer.addEventListener('click', () => { paused = true; follow = false; anchor = eligible[Math.min(Math.max(0, eligible.length - PAGE_SIZE), pageStart + PAGE_SIZE)]?.id ?? null; syncEmpty(); syncUnseen(); if (list) list.scrollTop = 0; });
     const referenceNote = el('p', { class: 'gc-meta gc-log-reference-note', text: lang === 'zh' ? '对象保留引用：展开或导出时的值可能已变化。' : 'Objects are retained by reference; values may change before expansion or export.' });
+    if (persistence && !persistence.scopeAvailable) referenceNote.textContent += lang === 'zh' ? ' 无法确定框架位置，历史保存不可用；当前日志仍可查看和导出。' : ' Frame position unavailable: history cannot be persisted; current logs remain viewable and exportable.';
     pane.append(filters, referenceNote, resume, pages, list, toast, form);
     syncEmpty();
 

@@ -1,3 +1,4 @@
+import { pagePerformanceRows } from '../core/page-performance';
 import type { SystemStore } from '../core/store';
 import { GravScopePlugin } from '../core/plugin';
 import { t } from '../i18n';
@@ -72,16 +73,7 @@ function collect(lang: GravScopeLang, store: SystemStore): HTMLElement[] {
     ], lang);
   }
 
-  const nav = readNavigation();
-  if (nav) {
-    push(sections, t(lang, 'performance'), [
-      ['DNS', ms(nav.domainLookupEnd - nav.domainLookupStart)],
-      ['TCP', ms(nav.connectEnd - nav.connectStart)],
-      ['TTFB', ms(nav.responseStart - nav.requestStart)],
-      ['DOM', ms(nav.domContentLoadedEventEnd - nav.startTime)],
-      ['Load', ms(nav.loadEventEnd - nav.startTime)],
-    ], lang);
-  }
+  push(sections, t(lang, 'performance'), pagePerformanceRows(lang), lang);
 
   if (store.custom.length) {
     push(sections, t(lang, 'custom'), store.custom.map((entry) => [entry.key, entry.value]), lang);
@@ -105,21 +97,6 @@ function push(sections: HTMLElement[], title: string, rows: Array<[string, strin
   }
   section.append(dl);
   sections.push(section);
-}
-
-function readNavigation(): PerformanceNavigationTiming | null {
-  try {
-    const entry = performance.getEntriesByType?.('navigation')?.[0];
-    if (!entry) return null;
-    return entry as PerformanceNavigationTiming;
-  } catch {
-    return null;
-  }
-}
-
-function ms(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '';
-  return `${Math.round(value)} ms`;
 }
 
 function safe(read: () => string): string {

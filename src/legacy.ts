@@ -6,3 +6,5 @@ export type { BuiltinPlugin, CaptureOptions, CaptureStatus, CaptureStatusMap, Ex
 export default GravScope;
 
 export type { DiagnosticReport, ReportOptions } from './report/snapshot';
+
+export type { PagePerformance, PageMetric } from './core/page-performance';

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 — 2026-11-04
+
+- Unify current-document navigation and paint metrics across Performance/System, filtered copying, JSON/HTML reports and local replay.
+- Include DNS, connection/TLS, request/navigation TTFB, download, DOM readiness, Load, FP/FCP and document sizes; distinguish pending/unavailable from measured zero.
+- Fix diagnostic hint stretching and clarify that the performance capture toggle controls long tasks, independently of read-only browser snapshots.
+- Validate fixed-frame isolation (7 checks) and actual page timings in GeekGravity on the iPhone 16 / iOS 18.6 simulator. No standard LCP/CLS/INP scores or dynamic-frame identity support.
+
+- Isolate session log history by stable frame-tree position; preserve the top-window history key and skip storage when frame position cannot be resolved.
+- Include optional top/iframe frame context in JSON, HTML and local report replay.
+- Add parent/sibling/nested history isolation and inaccessible-frame regression coverage. Dynamic frame reordering and cross-frame aggregation remain unsupported.
+
 ## 0.2.0 — 2026-11-04
 
 - Fix stretched capture-status and object-reference hints found in iOS WKWebView validation.

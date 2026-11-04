@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GravScope 页面性能验收</title><style>body{font:16px system-ui;padding:14px;background:#eef2f8}button{padding:12px;font:inherit}pre{white-space:pre-wrap;font:13px monospace;overflow-wrap:anywhere}</style><h2>页面性能 · WKWebView</h2><p>读取本页真实浏览器数据，不模拟时间值。</p><button onclick="panel.showTab('performance')">打开性能面板</button><button onclick="show()">更新报告快照</button><pre id="result"></pre><script src="/dist/gravscope.modern.iife.js?perf=20261104-1"></script><script>
+const panel = new GravScope({lang:'zh',entryButton:false});
+function show(){ const p=panel.getReport().performance;document.querySelector('#result').textContent='nativeWebView: '+!!window.ReactNativeWebView+'\n'+Object.entries(p.metrics).map(([key,m])=>key+': '+(m.value===null?m.state:m.value+' '+m.unit)).join('\n'); }
+window.addEventListener('load',()=>setTimeout(show,50));
+</script></html>

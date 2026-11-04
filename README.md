@@ -14,7 +14,7 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Status
 
-**0.2.0 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
+**0.2.1 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
 
 ## Features
 
@@ -483,7 +483,7 @@ npm run check:package
 
 Open the local URL printed by Vite. Add `?shot` to populate sample data. This sample deliberately triggers an error and a failed resource request.
 
-`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.2.0.tgz` for local evaluation.
+`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.2.1.tgz` for local evaluation.
 
 ## License
 
@@ -494,11 +494,11 @@ Open the local URL printed by Vite. Add `?shot` to populate sample data. This sa
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.0/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js).
 
 ## Extended diagnostics and export integration (0.2.0)
 
@@ -565,8 +565,20 @@ Panel banners show channel states; Capture settings explains coverage. Streams e
 
 `npm run check:release` checks package/lock/runtime versions and pinned website CDN references. Strict publish checks reject unpromoted Unreleased notes and package/website version mismatches. After build, `npm run check:soak -- 1` runs a one-minute synthetic capture/lifecycle check; use `-- 30` for thirty minutes. This uses Node/happy-dom and fake connections, not a real mobile browser/native bridge.
 
-## iframe boundaries
+## iframe boundaries (0.2.1)
 
-0.2.0 does not include frame aggregation or history isolation. Each instance captures its own window and is clipped to its frame. Parent and child instances have separate entries. Same-origin frames share the history storage key and may overwrite or clear each other’s history; avoid enabling preserveLogs in both parent and child. Reload affects the current frame only.
+Each instance captures its own window, is clipped to its frame and reloads that frame only. Session history is isolated by position in a stable frame tree, including parents, siblings and nested children. Dynamic insertion, removal, reordering or position reuse may restore the old slot's history; avoid preserveLogs in those cases. No cross-frame aggregation. See [diagnostics and validation](docs/diagnostics.md).
 
-Native file saving, sharing and permissions are implemented and validated by each integrator.
+Native file saving, sharing and permissions remain the integrator's responsibility.
+
+## Basic page performance (0.2.1)
+
+Performance and System show the same navigation/paint metrics: redirects, DNS, connection, TLS, request/navigation TTFB, document download, DOM interactive, DOMContentLoaded, Load, FP/FCP and document transfer/encoded/decoded sizes. Search/copy, JSON/HTML export and local replay include these measurements.
+
+```js
+const report = panel.getReport();
+const load = report.performance?.metrics.load;
+if (load?.state === 'available') console.log(load.value, load.unit);
+```
+
+Each metric has `value: number | null`, `unit: 'ms' | 'bytes'`, and `state: 'available' | 'pending' | 'unavailable'`. Zero is a valid observation; missing values are null. Load is not application readiness. These are current-document timings, not SPA route or BFCache restoration timings. Standard LCP/CLS/INP scores are not included. See [metric semantics](docs/diagnostics.md).

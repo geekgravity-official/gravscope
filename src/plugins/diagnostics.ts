@@ -1,3 +1,4 @@
+import { pagePerformanceRows } from '../core/page-performance';
 import { GravScopePlugin } from '../core/plugin';
 import type { ActivityStore } from '../core/activity';
 import type { LogStore, NetStore } from '../core/store';
@@ -19,6 +20,7 @@ export function createDiagnosticsPlugin(id: 'timeline' | 'performance' | 'stream
       entries.push(...net.items.map(item => ({ key: `net-${item.id}`, time: item.startTime, title: `${item.method} ${item.status || (item.pending ? 'pending' : item.statusText)} · ${item.duration} ms`, text: `${item.url}\n${item.error}\n${item.extra}` })));
     }
     if (id === 'performance') {
+      entries.push(...pagePerformanceRows(lang).map(([title, text], index) => ({ key: 'page-' + index, time: Date.now(), title, text })));
       const slow = net.items.filter(item => !item.pending && item.duration >= 1000).sort((a, b) => b.duration - a.duration).slice(0, 50);
       const large = net.items.filter(item => item.size > 0).sort((a, b) => b.size - a.size).slice(0, 50);
       entries.push(...slow.map(item => ({ key: `slow-${item.id}`, time: item.startTime, title: `Slow · ${Math.round(item.duration)} ms`, text: item.url })));
@@ -41,7 +43,7 @@ export function createDiagnosticsPlugin(id: 'timeline' | 'performance' | 'stream
     for (const entry of selected) {
       let card = cards.get(entry.key);
       if (!card) { card = el('details', { class: 'gc-error-item' }); card.append(el('summary'), el('pre', { class: 'gc-pre' })); cards.set(entry.key, card); }
-      card.querySelector('summary')!.textContent = `${new Date(entry.time).toLocaleTimeString()} · ${entry.title} · ${entry.text.split('\n')[0].slice(0, 160)}`;
+      card.querySelector('summary')!.textContent = `${entry.key.startsWith('page-') ? '' : new Date(entry.time).toLocaleTimeString() + ' · '}${entry.title} · ${entry.text.split('\n')[0].slice(0, 160)}`;
       card.querySelector('pre')!.textContent = entry.text;
       fragment.append(card);
     }
@@ -49,7 +51,7 @@ export function createDiagnosticsPlugin(id: 'timeline' | 'performance' | 'stream
     list.replaceChildren(fragment); list.scrollTop = offset;
     label.textContent = `${entries.length ? page * 100 + 1 : 0}–${Math.min(entries.length, (page + 1) * 100)} / ${entries.length}`;
     previous.disabled = page === 0; next.disabled = (page + 1) * 100 >= entries.length;
-    hint.textContent = focus === null ? (id === 'performance' ? (lang === 'zh' ? '慢请求 ≥ 1000 ms；体积取浏览器可观测值。长任务仅在浏览器支持时记录，包含调试面板自身开销。' : 'Slow requests ≥ 1000 ms; sizes depend on browser visibility. Long tasks require browser support and include debugger overhead.') : (lang === 'zh' ? '仅包含已保留记录；时间接近不代表因果关系。' : 'Retained records only; temporal proximity does not imply causation.')) : (lang === 'zh' ? '异常前后各 30 秒；清除时间范围可查看全部' : '30 seconds before/after the error; reset range to view all');
+    hint.textContent = focus === null ? (id === 'performance' ? (lang === 'zh' ? '页面指标为当前文档快照，Load 不代表业务就绪；不含标准 LCP/CLS/INP 评分。0 可能来自缓存或连接复用。慢请求 ≥ 1000 ms；体积取浏览器可观测值。长任务仅在浏览器支持时记录，包含调试面板自身开销。' : 'Current-document snapshot; Load is not application readiness. No standard LCP/CLS/INP scores. Zero may reflect cache or connection reuse. Slow requests ≥ 1000 ms; sizes depend on browser visibility. Long tasks require browser support and include debugger overhead.') : (lang === 'zh' ? '仅包含已保留记录；时间接近不代表因果关系。' : 'Retained records only; temporal proximity does not imply causation.')) : (lang === 'zh' ? '异常前后各 30 秒；清除时间范围可查看全部' : '30 seconds before/after the error; reset range to view all');
   };
   const schedule = () => { if (!timer) timer = window.setTimeout(paint, 32); };
   plugin.focus = time => { focus = time; page = 0; paint(); };
@@ -59,12 +61,15 @@ export function createDiagnosticsPlugin(id: 'timeline' | 'performance' | 'stream
     previous = el('button', { class: 'gc-tool', text: lang === 'zh' ? '上一页' : 'Previous' });
     next = el('button', { class: 'gc-tool', text: lang === 'zh' ? '下一页' : 'Next' });
     previous.onclick = () => { page--; paint(); list.scrollTop = 0; }; next.onclick = () => { page++; paint(); list.scrollTop = 0; };
-    label = el('span'); hint = el('p', { class: 'gc-meta' }); list = el('div', { class: 'gc-list' });
+    label = el('span'); hint = el('p', { class: 'gc-meta gc-diagnostics-hint' }); list = el('div', { class: 'gc-list' });
     const copy = el('button', { class: 'gc-tool', text: lang === 'zh' ? '复制当前筛选' : 'Copy matches' });
     bindCopy(copy, () => collect().map(item => `${new Date(item.time).toISOString()} ${item.title}\n${item.text}`).join('\n\n'), lang);
     pane.append(el('div', { class: 'gc-filters' }, [search, copy]), hint, el('div', { class: 'gc-log-pages' }, [previous, label, next]), list);
     const stops = [logs.subscribe(schedule), net.subscribe(schedule), activity.subscribe(schedule)];
-    plugin.on('remove', () => { stops.forEach(stop => stop()); window.clearTimeout(timer); cards.clear(); });
+    const loaded = () => schedule();
+    window.addEventListener('load', loaded);
+    window.addEventListener('pageshow', loaded);
+    plugin.on('remove', () => { window.removeEventListener('load', loaded); window.removeEventListener('pageshow', loaded); stops.forEach(stop => stop()); window.clearTimeout(timer); cards.clear(); });
     paint();
   });
   plugin.on('show', paint);

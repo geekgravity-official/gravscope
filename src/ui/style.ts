@@ -461,7 +461,7 @@ i.gc-lvl-error { background: rgba(251, 113, 133, 0.18); }
 .gc-thumb { width: 40px; height: 40px; object-fit: cover; flex: none; display: block; background: var(--chip); }
 .gc-msg .gc-thumb, .gc-pre .gc-thumb, .gc-detail > .gc-thumb { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; }
 .gc-meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
-.gc-capture-summary, .gc-log-reference-note { flex: none; margin: 0; padding: 6px 12px; white-space: normal; overflow-wrap: anywhere; }
+.gc-capture-summary, .gc-log-reference-note, .gc-diagnostics-hint { flex: none; margin: 0; padding: 6px 12px; white-space: normal; overflow-wrap: anywhere; }
 .gc-detail { flex: 1; min-width: 0; max-width: 100%; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 8px 12px 16px; }
 .gc-detail h3 { margin: 8px 0; max-width: 100%; font-size: 13px; overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word; }
 .gc-detail h4 { margin: 0; font-size: 12px; color: var(--accent); }

@@ -1,7 +1,9 @@
+import { readPagePerformance, type PagePerformance } from '../core/page-performance';
 import { byteSize, checkReportSize, MAX_REPORT_BYTES, ReportLimitError } from './limits';
 import type { ActivityStore } from '../core/activity';
 import type { LogStore, NetStore, SystemStore } from '../core/store';
 import { VERSION } from '../version';
+import { getFrameContext, type FrameContext } from '../core/frame-context';
 
 export interface ReportOptions {
   /** Include records at or after this Unix timestamp in milliseconds. */
@@ -15,6 +17,9 @@ export interface DiagnosticReport {
   version: string;
   createdAt: string;
   page: string;
+  /** Optional for compatibility with reports from earlier releases. */
+  frame?: FrameContext;
+  performance?: PagePerformance;
   device: { userAgent: string; language: string; viewport: string };
   custom: unknown;
   logs: unknown[];
@@ -117,6 +122,8 @@ export function captureReport(logs: LogStore, network: NetStore, system: SystemS
   const report: DiagnosticReport = {
     schemaVersion: 1, version: VERSION, createdAt: new Date().toISOString(),
     page: redactText(location.href, keys),
+    frame: getFrameContext(),
+    performance: readPagePerformance(),
     device: { userAgent: navigator.userAgent, language: navigator.language, viewport: `${innerWidth} × ${innerHeight}` },
     custom: system.custom.map(entry => retain({ key: entry.key, value: isSensitive(entry.key, keys) ? '[REDACTED]' : clean(entry.value) })),
     logs: selectedLogs.map(item => retain({ id: item.id, time: item.time, level: item.level, repeat: item.repeat, kind: item.kind, historical: item.historical, errorSource: item.errorSource, boundary: item.boundary, depth: item.depth, groupIds: item.groupIds.slice(), collapsed: item.collapsed, args: clean(item.args), command: item.command ? '[Command omitted]' : undefined })),
@@ -134,7 +141,7 @@ function escape(value: string): string {
 
 export function reportHTML(report: DiagnosticReport): string {
   const section = (name: string, data: unknown[]) => `<h2>${name} (${data.length})</h2>${data.map((item, index) => `<details><summary>${index + 1} · ${escape(JSON.stringify(item).slice(0, 160))}</summary><pre>${escape(JSON.stringify(item, null, 2))}</pre></details>`).join('')}`;
-  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>GravScope diagnostic report</title><style>body{font:14px/1.6 system-ui,sans-serif;max-width:1000px;margin:32px auto;padding:0 20px;color:#202735;background:#f5f7fa}h1{margin-bottom:4px}summary{cursor:pointer;overflow-wrap:anywhere}details,pre{padding:12px;background:white;border:1px solid #dce1e8;border-radius:8px}details{margin:8px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}p{color:#596577}</style><h1>GravScope · Diagnostic report</h1><p>${escape(report.createdAt)} · v${escape(report.version)}</p><p>${escape(report.policy)}</p><h2>Environment</h2><pre>${escape(JSON.stringify({ page: report.page, device: report.device, custom: report.custom }, null, 2))}</pre>${section('Logs', report.logs)}${section('Network', report.network)}${section('Activity', report.activity ?? [])}</html>`;
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>GravScope diagnostic report</title><style>body{font:14px/1.6 system-ui,sans-serif;max-width:1000px;margin:32px auto;padding:0 20px;color:#202735;background:#f5f7fa}h1{margin-bottom:4px}summary{cursor:pointer;overflow-wrap:anywhere}details,pre{padding:12px;background:white;border:1px solid #dce1e8;border-radius:8px}details{margin:8px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}p{color:#596577}</style><h1>GravScope · Diagnostic report</h1><p>${escape(report.createdAt)} · v${escape(report.version)}</p><p>${escape(report.policy)}</p><h2>Environment</h2><pre>${escape(JSON.stringify({ page: report.page, frame: report.frame, device: report.device, custom: report.custom }, null, 2))}</pre><h2>Page performance</h2><pre>${escape(JSON.stringify(report.performance ?? { unavailable: true }, null, 2))}</pre>${section('Logs', report.logs)}${section('Network', report.network)}${section('Activity', report.activity ?? [])}</html>`;
 }
 
 function isSensitive(key: string, keys: readonly string[]): boolean { return sensitive.test(key) || keys.some(value => value.toLowerCase() === key.toLowerCase()); }

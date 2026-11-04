@@ -20,8 +20,11 @@ try {
   assert.equal(root.querySelector('.report-group').open, true);
   const mode = root.querySelector('[data-report-mode]'); mode.value = 'network'; search.value = ''; mode.dispatchEvent(new window.Event('change'));
   assert.ok(root.querySelector('[data-report-output]').textContent.includes('/fail'));
-  const withActivity = { ...report, activity: [{ time: 1, type: 'websocket', action: 'receive', url: 'wss://example.com', detail: { message: '<img src=x onerror=alert(1)>' } }] };
+  const withActivity = { ...report, frame: { type: 'iframe', path: [0] }, performance: { scope: 'current-document', metrics: { load: { value: 123, unit: 'ms', state: 'available' } } }, activity: [{ time: 1, type: 'websocket', action: 'receive', url: 'wss://example.com', detail: { message: '<img src=x onerror=alert(1)>' } }] };
   await viewer.load(new window.File([JSON.stringify(withActivity)], 'activity.json'));
+  assert.ok(root.querySelector('[data-report-meta]').textContent.includes('current-document'));
+  assert.ok(root.querySelector('[data-report-meta]').textContent.includes('123'));
+  assert.ok(root.querySelector('[data-report-meta]').textContent.includes('iframe'));
   mode.value = 'activity'; mode.dispatchEvent(new window.Event('change'));
   assert.ok(root.querySelector('[data-report-output]').textContent.includes('websocket'));
   assert.ok(root.querySelector('[data-report-output]').textContent.includes('onerror'));

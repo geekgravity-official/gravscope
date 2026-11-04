@@ -96,7 +96,7 @@
         logText = data.logs.map(item => `${item.level} ${item.args.map(pretty).join(' ')}`);
         netText = data.network.map(item => `${item.method} ${item.status} ${item.url} ${pretty(item)}`);
         limit = 100; search.value = '';
-        metadata.textContent = pretty({ version: data.version, createdAt: data.createdAt, page: data.page, device: data.device, custom: data.custom, policy: data.policy });
+        metadata.textContent = pretty({ version: data.version, createdAt: data.createdAt, page: data.page, frame: data.frame, performance: data.performance, device: data.device, custom: data.custom, policy: data.policy });
         render();
       } catch (error) {
         if (current !== generation) return;

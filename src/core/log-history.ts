@@ -1,6 +1,7 @@
 import { LogStore, type LogItem } from './store';
 import { sanitize } from '../report/snapshot';
 import type { GravScopeLang } from '../types';
+import { getFrameContext } from './frame-context';
 
 export const HISTORY_KEY = 'gravscope:log-history:v1';
 const MAX_RECORDS = 200;
@@ -12,11 +13,15 @@ export class LogHistory {
   private timer = 0;
   private listeners = new Set<() => void>();
   private stop: () => void;
+  private readonly storageKey: string | null;
+  get scopeAvailable(): boolean { return this.storageKey !== null; }
 
   constructor(private store: LogStore, preference: boolean | undefined, lang: GravScopeLang, private redactKeys: () => readonly string[] = () => []) {
+    const frame = getFrameContext();
+    this.storageKey = frame.type === 'top' ? HISTORY_KEY : frame.path?.length ? `${HISTORY_KEY}:frame:${frame.path.join('.')}` : null;
     let saved: unknown;
     try {
-      const raw = sessionStorage.getItem(HISTORY_KEY);
+      const raw = this.storageKey ? sessionStorage.getItem(this.storageKey) : null;
       if (raw && raw.length <= MAX_CHARS) saved = JSON.parse(raw);
     } catch { /* Storage may be disabled or corrupted. */ }
     const data = saved as { version?: number; enabled?: boolean; records?: unknown[] } | undefined;
@@ -70,8 +75,9 @@ export class LogHistory {
 
   private onVisibility = (): void => { if (document.visibilityState === 'hidden') this.flush(); };
   private cancel(): void { window.clearTimeout(this.timer); this.timer = 0; }
-  private remove(): void { try { sessionStorage.removeItem(HISTORY_KEY); } catch { /* Best effort. */ } }
+  private remove(): void { try { if (this.storageKey) sessionStorage.removeItem(this.storageKey); } catch { /* Best effort. */ } }
   private write(records: unknown[]): void {
+    if (!this.storageKey) return;
     try {
       const prefix = '{"version":1,"enabled":true,"records":[';
       const encoded: string[] = [];
@@ -84,7 +90,7 @@ export class LogHistory {
         size += extra;
       }
       const text = prefix + encoded.join(',') + ']}';
-      sessionStorage.setItem(HISTORY_KEY, text);
+      sessionStorage.setItem(this.storageKey, text);
     } catch { this.remove(); /* Quota or disabled storage must not break the host page. */ }
   }
 }

@@ -69,3 +69,36 @@ Cookie、localStorage、sessionStorage 支持搜索键和值。编辑为多行�
 ## 采集状态
 
 `getCaptureStatus()` 返回独立副本，每通道包含 enabled、state、detail；state 分为 enabled、disabled、unavailable、failed。未启用与环境不支持有明确区别。长任务 PerformanceObserver 的订阅失败会显示 failed 并可重试，不再用空操作假装采集中。面板状态栏与采集设置同步显示结果；实时通道列出实际存在的 WebSocket/EventSource 能力和仅新建连接的边界。
+
+## iframe 基础隔离（0.2.1）
+
+- 每个实例仍只采集自己的 window，不读取其他框架的 DOM、URL 或名称，不增加 postMessage 桥接，也不聚合父子日志。
+- 顶层页面继续使用原历史键；iframe 根据从顶层到当前框架的零基位置路径分配独立存储键，例如 `[0, 1]`。同源父子、兄弟及嵌套框架不再共用同一个键。
+- 位置在初始化时确定，结构固定时 iframe 自身刷新可以恢复对应历史；清空、关闭保留或配额失败只操作自己的键。无法解析路径时不读写历史，并在日志面板提示，当前采集与导出仍可用。
+- **位置不是业务身份**：动态插入、删除、重排 iframe，或把同一位置替换成另一个页面时，历史可能对应旧位置；这些场景暂不建议开启 preserveLogs。此版本不写入 window.name、不修改宿主 iframe 属性。
+- `getReport()` 新增可选 `frame: { type: 'top' | 'iframe' | 'unknown', path: number[] | null }`；HTML 环境区与报告回放显示同一字段。旧报告没有该字段仍可读取。
+- sandbox 禁用脚本时无法运行组件；限制存储时无法保证历史恢复；面板仍受 iframe 边界裁切，刷新仅作用于所在 frame。
+
+上述隔离从 0.2.1 提供。自动化使用受限窗口模型和 DOM 模拟；另已在 GeekGravity 的 iPhone 16 / iOS 18.6 模拟器 WKWebView 完成固定同源嵌套与不透明源 sandbox 实测，7 项通过，详见 [验收记录](mobile-validation.md)。普通跨域站点、动态重排和物理设备仍未验收。
+
+## 基础页面性能（0.2.1）
+
+浏览器 Navigation/Paint Timing 只读快照；范围为当前 document，不合并父子 iframe。指标从导航开始计时，requestTTFB 例外，从 requestStart 计时；各阶段会重叠，不能相加得到页面总时长。连接包含 TLS，TLS 是其中一段。
+
+| 字段 | 定义 |
+| --- | --- |
+| redirect / dns / tcp / tls | 浏览器对应阶段的结束减开始；TLS 未提供时 null |
+| requestTTFB | responseStart - requestStart |
+| navigationTTFB | responseStart - startTime，包含请求前阶段 |
+| download | responseEnd - responseStart，仅主文档 |
+| domInteractive | domInteractive - startTime，不代表应用可交互 |
+| domContentLoaded | domContentLoadedEventEnd - startTime |
+| load | loadEventEnd - startTime，不代表异步业务加载结束 |
+| fp / fcp | first-paint / first-contentful-paint 的 startTime |
+| transferSize / encodedBodySize / decodedBodySize | 浏览器提供的主文档字节数；缓存、隐私或实现限制可导致 0 |
+
+`report.performance` 为可选字段以兼容旧报告，含 scope: current-document、navigationType（navigate/reload/back_forward/prerender/null）和 metrics。每项 value 为数值或 null，unit 为 ms/bytes，state 为 available/pending/unavailable。没有可用数据不显示成 0。完成加载后未提供的绘制条目显示 unavailable；页面尚在加载且支持 paint 时显示 pending。
+
+面板打开、点击刷新或收到 load/pageshow 时更新；getReport 每次读取新快照。读取基础计时不安装额外观察器、不上传数据。`capture.performance` 仍控制长任务采集，关闭后基础计时仍可读取，界面明确标记“长任务”。clearAll 清除采集记录，不调用 performance.clearResourceTimings，不删除浏览器计时；getReport 的 since 过滤记录，不过滤这份环境快照。SPA 导航不重置文档计时；BFCache 恢复仍展示原文档导航数据，不声称测量恢复速度。
+
+本轮不提供标准 LCP/CLS/INP 评分，未将原始条目或最大事件耗时冒充 Core Web Vitals。后续如接入完整体验指标需处理生命周期、前后台、交互与页面恢复；可参考 [Google web-vitals](https://github.com/GoogleChrome/web-vitals)。

@@ -390,7 +390,11 @@ function hookResources(store: NetStore, includeExisting: boolean): () => void {
       byElement.set(target, record);
       return;
     }
-    if (!record.pending && event.type !== 'error') return;
+    if (absoluteUrl(record.url) !== absoluteUrl(url)) {
+      beginResource(store, byElement, target, url);
+      record = byElement.get(target)!;
+    }
+    if (!record.pending && !['unknown', 'deferred'].includes(record.statusText) && event.type !== 'error') return;
     if (event.type === 'error') markFailed(record, target);
     else markLoaded(record);
     byElement.set(target, record);
@@ -398,10 +402,10 @@ function hookResources(store: NetStore, includeExisting: boolean): () => void {
   };
 
   window.addEventListener('error', onResourceEvent, true);
-  window.addEventListener('load', onResourceEvent, true);
+  document.addEventListener('load', onResourceEvent, true);
   restore.push(() => {
     window.removeEventListener('error', onResourceEvent, true);
-    window.removeEventListener('load', onResourceEvent, true);
+    document.removeEventListener('load', onResourceEvent, true);
   });
 
   restore.push(watchPerformance(store, seen, includeExisting));
@@ -498,7 +502,7 @@ function applyEntry(store: NetStore, seen: Set<string>, entry: PerformanceEntry)
   if (failed) {
     target.error = target.error || `HTTP ${status}`;
     target.statusText = target.statusText || String(status);
-  } else if (!target.statusText) {
+  } else if (!target.statusText || ['unknown', 'deferred'].includes(target.statusText)) {
     target.statusText = cached ? 'cached' : '';
   }
   target.cached = cached || target.cached;
@@ -513,12 +517,15 @@ function applyEntry(store: NetStore, seen: Set<string>, entry: PerformanceEntry)
 
 function watchDom(store: NetStore, byElement: WeakMap<Element, NetworkRecord>, includeExisting: boolean): () => void {
   if (typeof MutationObserver === 'undefined' || !document.documentElement) return () => undefined;
+  const tracked = new Map<Element, NetworkRecord>();
   const consider = (node: Element, fresh: boolean) => {
     if (isInternal(node)) return;
     const url = resourceUrlOf(node);
     if (!url || /^javascript:/i.test(url)) return;
     if (!fresh && !isInFlight(node)) return;
     beginResource(store, byElement, node, url);
+    const record = byElement.get(node);
+    if (record) tracked.set(node, record);
   };
   const scan = (node: Node, fresh: boolean) => {
     if (!(node instanceof Element) || isInternal(node)) return;
@@ -535,6 +542,7 @@ function watchDom(store: NetStore, byElement: WeakMap<Element, NetworkRecord>, i
         for (let child = 0; child < added.length; child += 1) scan(added[child], true);
       } else if (mutation.type === 'attributes' && mutation.target instanceof Element) {
         consider(mutation.target, true);
+        if (mutation.target instanceof HTMLSourceElement && mutation.target.parentElement) scan(mutation.target.parentElement, true);
       }
     }
   });
@@ -543,27 +551,55 @@ function watchDom(store: NetStore, byElement: WeakMap<Element, NetworkRecord>, i
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['src', 'href', 'data'],
+      attributeFilter: ['src', 'srcset', 'sizes', 'loading', 'href', 'data'],
     });
   } catch {
     return () => undefined;
   }
-  return () => observer.disconnect();
+  // Reconcile missed events without retaining elements beyond the bounded store.
+  const timer = setInterval(() => {
+    if (!tracked.size) return;
+    const retained = new Set(store.items);
+    for (const [element, record] of tracked) {
+      if (!retained.has(record)) { tracked.delete(element); continue; }
+      const unresolved = record.pending || ['unknown', 'deferred'].includes(record.statusText);
+      if (!unresolved) { tracked.delete(element); continue; }
+      if (!element.isConnected || absoluteUrl(resourceUrlOf(element)) !== absoluteUrl(record.url)) {
+        record.pending = false;
+        record.statusText = 'unknown';
+        store.update(record);
+        tracked.delete(element);
+        if (element.isConnected) consider(element, true);
+        continue;
+      }
+      if (element instanceof HTMLImageElement && element.complete) {
+        if (element.naturalWidth > 0) markLoaded(record);
+        else markFailed(record, element);
+        store.update(record);
+        tracked.delete(element);
+      } else if (record.pending && Date.now() - record.startTime >= 30000) {
+        record.pending = false;
+        record.statusText = 'unknown';
+        store.update(record);
+      }
+    }
+  }, 1000);
+  return () => { observer.disconnect(); clearInterval(timer); tracked.clear(); };
 }
 
 function beginResource(store: NetStore, byElement: WeakMap<Element, NetworkRecord>, element: Element, url: string): void {
   const abs = absoluteUrl(url);
   const previous = byElement.get(element);
   if (previous && absoluteUrl(previous.url) === abs) return;
-  if (previous?.pending) {
+  if (previous && (previous.pending || ['unknown', 'deferred'].includes(previous.statusText))) {
     previous.pending = false;
-    previous.statusText = previous.statusText || 'aborted';
+    previous.statusText = 'aborted';
     previous.endTime = Date.now();
     previous.duration = Math.max(0, previous.endTime - previous.startTime);
     store.update(previous);
   }
   const existing = recentMatch(store, abs);
-  if (existing) {
+  if (existing && !existing.pending && existing.endTime > 0 && !(element instanceof HTMLImageElement && !element.complete)) {
     existing.initiator = existing.initiator || initiatorOf(element);
     const note = elementNote(element);
     if (note && !existing.extra.includes(note)) existing.extra = existing.extra ? `${existing.extra}\n${note}` : note;
@@ -575,7 +611,8 @@ function beginResource(store: NetStore, byElement: WeakMap<Element, NetworkRecor
     kind: 'resource',
     method: 'GET',
     url: abs,
-    pending: true,
+    pending: !(element instanceof HTMLImageElement && element.loading === 'lazy'),
+    statusText: element instanceof HTMLImageElement && element.loading === 'lazy' ? 'deferred' : '',
     initiator: initiatorOf(element),
     extra: elementNote(element),
   });
@@ -595,7 +632,7 @@ function markLoaded(record: NetworkRecord): void {
   record.pending = false;
   record.endTime = record.endTime || Date.now();
   record.duration = record.duration || Math.max(0, record.endTime - record.startTime);
-  if (!record.statusText) record.statusText = record.cached ? 'cached' : 'loaded';
+  if (!record.statusText || ['unknown', 'deferred'].includes(record.statusText)) record.statusText = record.cached ? 'cached' : 'loaded';
 }
 
 function markFailed(record: NetworkRecord, target: Element): void {

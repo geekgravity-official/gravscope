@@ -526,11 +526,11 @@ ES5 包的语法是 `var` 和 `function`，并带上 `Promise`、`Map`、`Object
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.2/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.2/dist/gravscope.modern.iife.js).
 
 ## 新增诊断与导出接入（0.2.0）
 
@@ -595,3 +595,7 @@ if (load?.state === 'available') console.log(load.value, load.unit);
 ```
 
 每项为 `{ value: number | null, unit: 'ms' | 'bytes', state: 'available' | 'pending' | 'unavailable' }`。0 是有效观测值，不支持或未提供时为 null。Load 不等于业务就绪；当前文档数据不代表 SPA 路由耗时或 BFCache 恢复耗时。本轮不提供标准 LCP/CLS/INP 评分。完整字段、采集开关与清空语义见 [性能说明](docs/diagnostics.md)。
+
+## 资源加载状态
+
+图片等资源的状态结合加载事件、元素状态和资源性能记录更新。懒加载图片显示“懒加载 · 状态未确认”；元素被移除，或观察超过 30 秒仍无法确认完成时，显示“状态未知”，不代表请求失败或已取消，后续收到完成或失败信息仍会更新。状态未知不等于 HTTP 状态码 0，面板不会为未确认资源额外请求缩略图。

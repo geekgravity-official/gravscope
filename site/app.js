@@ -13,7 +13,7 @@
       const start = () => {
         try {
           panel = new window.GravScope({ lang: 'zh', theme: dark ? 'dark' : 'light' });
-          panel.setSystemInfo('Demo', 'GravScope 0.2.1 playground');
+          panel.setSystemInfo('Demo', 'GravScope 0.2.2 playground');
           pending = null;
           resolve(panel);
         } catch (error) { pending = null; reject(error); }
@@ -51,7 +51,7 @@
             gc.showTab('storage'); break;
           case 'element': gc.showTab('element'); break;
           case 'export':
-            console.info('报告示例', { build: 'demo-0.2.1', access_token: 'demo-token-not-a-real-credential' });
+            console.info('报告示例', { build: 'demo-0.2.2', access_token: 'demo-token-not-a-real-credential' });
             gc.showTab('log'); break;
           case 'theme': dark = !dark; gc.setOption('theme', dark ? 'dark' : 'light'); gc.show(); break;
         }
@@ -69,7 +69,7 @@
   const cdn = document.querySelector('#cdn');
   function updateSnippet() {
     const origin = cdn.value === 'unpkg' ? 'https://unpkg.com/' : 'https://cdn.jsdelivr.net/npm/';
-    document.querySelector('#cdn-code').textContent = `<script src="${origin}@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js"><` + `/script>\n<script>\n  const panel = new GravScope();\n<` + `/script>`;
+    document.querySelector('#cdn-code').textContent = `<script src="${origin}@geekgravity/gravscope@0.2.2/dist/gravscope.modern.iife.js"><` + `/script>\n<script>\n  const panel = new GravScope();\n<` + `/script>`;
   }
   cdn.addEventListener('change', updateSnippet); updateSnippet();
   async function copy(text) {

@@ -26,7 +26,7 @@ Mobile console · iPhone 16 / iOS 18.6 simulator, inside GeekGravity (panel only
 
 ## Status
 
-**0.2.1 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
+**0.2.2 is an early preview.** Automated checks cover core behavior and package entry points. Mobile browser/device validation and long-running performance testing remain open.
 
 ## Features
 
@@ -495,7 +495,7 @@ npm run check:package
 
 Open the local URL printed by Vite. Add `?shot` to populate sample data. This sample deliberately triggers an error and a failed resource request.
 
-`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.2.1.tgz` for local evaluation.
+`npm pack` produces a tarball that can be installed with `npm install /path/to/geekgravity-gravscope-0.2.2.tgz` for local evaluation.
 
 ## License
 
@@ -506,11 +506,11 @@ Open the local URL printed by Vite. Add `?shot` to populate sample data. This sa
 jsDelivr (pinned version / 固定版本):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.2/dist/gravscope.modern.iife.js"></script>
 <script>const panel = new GravScope();</script>
 ```
 
-[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.1/dist/gravscope.modern.iife.js).
+[UNPKG fallback / 备用地址](https://unpkg.com/@geekgravity/gravscope@0.2.2/dist/gravscope.modern.iife.js).
 
 ## Extended diagnostics and export integration (0.2.0)
 
@@ -594,3 +594,7 @@ if (load?.state === 'available') console.log(load.value, load.unit);
 ```
 
 Each metric has `value: number | null`, `unit: 'ms' | 'bytes'`, and `state: 'available' | 'pending' | 'unavailable'`. Zero is a valid observation; missing values are null. Load is not application readiness. These are current-document timings, not SPA route or BFCache restoration timings. Standard LCP/CLS/INP scores are not included. See [metric semantics](docs/diagnostics.md).
+
+## Resource loading states
+
+Image and resource states combine load/error events, element state and resource timing entries. Lazy images are labeled “Lazy load · unconfirmed”. Removed elements or resources still unresolved after 30 seconds show “State unknown”; this does not mean failure or cancellation. Later completion or failure evidence can still update the record. Unknown state is distinct from HTTP status 0. Unconfirmed resources do not trigger thumbnail requests from the panel.

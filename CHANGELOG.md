@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 — 2026-11-05
+
+- Reconcile resource states after missed image events, URL/srcset changes and element removal. Lazy images are marked unconfirmed; resources unresolved after 30 seconds show unknown rather than a fabricated failure. Late load/error/timing evidence can still update them.
+- Capture resource load events on the document and avoid requesting panel thumbnails for unresolved resources. Add resource-state and UI regression coverage.
+
 ## 0.2.1 — 2026-11-04
 
 - Unify current-document navigation and paint metrics across Performance/System, filtered copying, JSON/HTML reports and local replay.

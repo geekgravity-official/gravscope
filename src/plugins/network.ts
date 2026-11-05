@@ -159,7 +159,7 @@ export function createNetworkPlugin(store: NetStore, lang: GravScopeLang): GravS
     const body = el('div', { class: 'gc-net-body' });
     body.append(main, sub);
     if (host) body.append(el('span', { class: 'gc-net-host', text: host }));
-    const preview = rowPreview(item.url, label, item.size);
+    const preview = item.pending || resourceStateLabel(item, lang) ? null : rowPreview(item.url, label, item.size);
     if (preview) {
       const mark = el('div', { class: 'gc-mark' });
       row.classList.add('has-preview');
@@ -287,6 +287,14 @@ function statusText(item: NetworkRecord, lang: GravScopeLang): string {
   return text === '—' ? '' : text;
 }
 
+function resourceStateLabel(item: NetworkRecord, lang: GravScopeLang): string {
+  if (item.kind !== 'resource' || item.pending || item.error || item.status) return '';
+  if (item.statusText === 'deferred') return lang === 'zh' ? '懒加载 · 状态未确认' : 'Lazy load · unconfirmed';
+  if (item.statusText === 'unknown') return lang === 'zh' ? '状态未知' : 'State unknown';
+  if (item.statusText === 'aborted') return lang === 'zh' ? '地址已替换' : 'URL replaced';
+  return '';
+}
+
 function statusLabel(item: NetworkRecord, lang: GravScopeLang): string {
   if (item.pending) return '…';
   if (item.kind === 'beacon') return item.statusText || 'sent';
@@ -310,7 +318,7 @@ function statusClass(item: NetworkRecord): string {
 function rowMeta(item: NetworkRecord, lang: GravScopeLang): string {
   const parts: string[] = [];
   if (item.cached) parts.push(t(lang, 'cached'));
-  parts.push(item.pending ? t(lang, 'pending') : formatDuration(item.duration));
+  parts.push(resourceStateLabel(item, lang) || (item.pending ? t(lang, 'pending') : formatDuration(item.duration)));
   if (item.protocol) parts.push(item.protocol);
   if (item.size) parts.push(formatBytes(item.size));
   const error = errorText(item, lang);
@@ -341,7 +349,7 @@ function generalText(item: NetworkRecord, lang: GravScopeLang): string {
   const lines = [`URL: ${payloadLabel(item.url)}`, `Kind: ${item.kind}`];
   if (item.initiator) lines.push(`Initiator: ${item.initiator}`);
   lines.push(`Method: ${item.method}`);
-  const status = item.pending ? t(lang, 'pending') : item.status ? String(item.status) : item.statusText || errorText(item, lang) || '—';
+  const status = resourceStateLabel(item, lang) || (item.pending ? t(lang, 'pending') : item.status ? String(item.status) : item.statusText || errorText(item, lang) || '—');
   lines.push(`Status: ${status}`);
   if (item.statusText && !['failed', 'cached', 'loaded', 'aborted'].includes(item.statusText)) {
     lines.push(`Status text: ${item.statusText}`);
@@ -349,7 +357,7 @@ function generalText(item: NetworkRecord, lang: GravScopeLang): string {
   if (item.cached) lines.push(`Cache: ${t(lang, 'cached')}`);
   if (item.protocol) lines.push(`Protocol: ${item.protocol}`);
   lines.push(`Started: ${formatTime(item.startTime)}`);
-  lines.push(`Duration: ${item.pending ? '…' : formatDuration(item.duration)}`);
+  lines.push(`Duration: ${item.pending || resourceStateLabel(item, lang) ? '…' : formatDuration(item.duration)}`);
   if (item.size) lines.push(`Size: ${formatBytes(item.size)}`);
   const error = errorText(item, lang);
   if (error) lines.push(`Error: ${error}`);

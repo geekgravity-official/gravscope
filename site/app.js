@@ -1,5 +1,11 @@
 (() => {
   'use strict';
+  const english = document.documentElement.lang === 'en';
+  const t = (zh, en) => english ? en : zh;
+  const languageSwitch = document.querySelector('[data-language-switch]');
+  const updateLanguageLink = () => { if (languageSwitch) languageSwitch.hash = location.hash; };
+  updateLanguageLink();
+  window.addEventListener('hashchange', updateLanguageLink);
   const base = new URL('.', document.currentScript.src);
   const status = document.querySelector('#demo-status');
   const copyStatus = document.querySelector('#copy-status');
@@ -12,7 +18,7 @@
     pending = new Promise((resolve, reject) => {
       const start = () => {
         try {
-          panel = new window.GravScope({ lang: 'zh', theme: dark ? 'dark' : 'light' });
+          panel = new window.GravScope({ lang: english ? 'en' : 'zh', theme: dark ? 'dark' : 'light' });
           panel.setSystemInfo('Demo', 'GravScope 0.2.2 playground');
           pending = null;
           resolve(panel);
@@ -22,7 +28,7 @@
       const script = document.createElement('script');
       script.src = new URL('vendor/gravscope.modern.iife.js', base).href;
       script.onload = start;
-      script.onerror = () => { script.remove(); pending = null; reject(new Error('工具加载失败，请检查网络后重试。')); };
+      script.onerror = () => { script.remove(); pending = null; reject(new Error(t("工具加载失败，请检查网络后重试。", "Could not load GravScope. Check your connection and try again."))); };
       document.head.append(script);
     }).finally(() => { pending = null; });
     return pending;
@@ -30,20 +36,20 @@
   document.querySelectorAll('[data-demo]').forEach(button => {
     button.addEventListener('click', async () => {
       button.disabled = true;
-      status.textContent = '正在准备演示…';
+      status.textContent = t("正在准备演示…", "Preparing the demo…");
       try {
         const gc = await load();
         switch (button.dataset.demo) {
           case 'log':
-            console.info('GravScope 演示', { route: '/checkout', cart: [{ id: 1, name: 'Demo item', quantity: 2 }], tags: new Set(['mobile', 'debug']) });
-            console.warn('示例警告：缓存未命中');
-            console.error(new Error('示例错误：Payment request failed'));
+            console.info(t("GravScope 演示", "GravScope demo"), { route: '/checkout', cart: [{ id: 1, name: 'Demo item', quantity: 2 }], tags: new Set(['mobile', 'debug']) });
+            console.warn(t("示例警告：缓存未命中", "Sample warning: cache miss"));
+            console.error(new Error(t("示例错误：Payment request failed", "Sample error: Payment request failed")));
             gc.showTab('log'); break;
           case 'network': {
             gc.showTab('network');
             const response = await fetch(new URL('mock.json', base));
-            if (!response.ok) throw new Error(`示例请求返回 ${response.status}`);
-            console.info('示例响应', await response.json());
+            if (!response.ok) throw new Error(`${t('示例请求返回', 'Sample request returned')} ${response.status}`);
+            console.info(t("示例响应", "Sample response"), await response.json());
             break;
           }
           case 'storage':
@@ -51,20 +57,20 @@
             gc.showTab('storage'); break;
           case 'element': gc.showTab('element'); break;
           case 'export':
-            console.info('报告示例', { build: 'demo-0.2.2', access_token: 'demo-token-not-a-real-credential' });
+            console.info(t("报告示例", "Sample report"), { build: 'demo-0.2.2', access_token: 'demo-token-not-a-real-credential' });
             gc.showTab('log'); break;
           case 'theme': dark = !dark; gc.setOption('theme', dark ? 'dark' : 'light'); gc.show(); break;
         }
-        status.textContent = button.dataset.demo === 'export' ? '请点击面板底部「导出」，预览后保存报告。' : button.dataset.demo === 'element' ? '请点击元素面板底部「选取」，再点页面上的元素。' : '演示已就绪，关闭面板后可以尝试其他场景。';
-      } catch (error) { status.textContent = `无法完成演示：${error.message || error}`; }
+        status.textContent = button.dataset.demo === 'export' ? t("请点击面板底部「导出」，预览后保存报告。", "Choose More → Export in the panel toolbar, then preview and save your report.") : button.dataset.demo === 'element' ? t("请点击元素面板底部「选取」，再点页面上的元素。", "Choose Pick in the Elements toolbar, then tap a page element.") : t("演示已就绪，关闭面板后可以尝试其他场景。", "Demo ready. Close the panel to try another scenario.");
+      } catch (error) { status.textContent = `${t('无法完成演示：', 'Demo failed: ')}${error.message || error}`; }
       finally { button.disabled = false; }
     });
   });
   document.querySelector('#reset').addEventListener('click', () => {
-    if (pending) { status.textContent = '工具正在加载，请稍后再清理。'; return; }
+    if (pending) { status.textContent = t("工具正在加载，请稍后再清理。", "GravScope is loading. Please wait before clearing."); return; }
     panel?.destroy(); panel = null;
-    try { localStorage.removeItem('gravscope-demo-note'); status.textContent = '演示存储已清理，工具已关闭。'; }
-    catch { status.textContent = '工具已关闭；浏览器不允许清理本地存储。'; }
+    try { localStorage.removeItem('gravscope-demo-note'); status.textContent = t("演示存储已清理，工具已关闭。", "Demo storage cleared and panel closed."); }
+    catch { status.textContent = t("工具已关闭；浏览器不允许清理本地存储。", "Panel closed; the browser blocked clearing local storage."); }
   });
   const cdn = document.querySelector('#cdn');
   function updateSnippet() {
@@ -84,14 +90,14 @@
   }
   document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
     const ok = await copy(document.getElementById(button.dataset.copy).textContent);
-    copyStatus.textContent = ok ? '已复制接入代码。' : '复制未成功，请手动选中代码复制。';
-    button.textContent = ok ? '已复制' : '请手动复制';
-    setTimeout(() => { button.textContent = '复制'; }, 1800);
+    copyStatus.textContent = ok ? t("已复制接入代码。", "Installation snippet copied.") : t("复制未成功，请手动选中代码复制。", "Copy failed. Select the code and copy it manually.");
+    button.textContent = ok ? t("已复制", "Copied") : t("请手动复制", "Copy manually");
+    setTimeout(() => { button.textContent = t("复制", "Copy"); }, 1800);
   }));
   document.querySelector('[data-copy-url]').addEventListener('click', async event => {
     const button = event.currentTarget;
-    const url = new URL('./#playground', base).href;
+    const url = new URL(english ? './index-en.html#playground' : './#playground', base).href;
     const ok = await copy(url);
-    button.textContent = ok ? '链接已复制' : url;
+    button.textContent = ok ? t("链接已复制", "Link copied") : url;
   });
 })();

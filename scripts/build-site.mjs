@@ -1,3 +1,4 @@
+import { localizeSite } from './localize-site.mjs';
 import { mkdir, rm, cp, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 const url = 'https://cdn.jsdelivr.net/npm/@geekgravity/gravscope@0.2.2/dist/gravscope.modern.iife.js';
@@ -11,5 +12,6 @@ await cp('site', 'site-dist', { recursive: true });
 await cp('public/brand', 'site-dist/brand', { recursive: true });
 await mkdir('site-dist/vendor', { recursive: true });
 await writeFile('site-dist/vendor/gravscope.modern.iife.js', bytes);
+await localizeSite('site-dist');
 await writeFile('site-dist/.nojekyll', '');
 console.log('Site built with checksum-verified npm 0.2.2 bundle.');

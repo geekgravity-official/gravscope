@@ -1,10 +1,12 @@
 import { Window } from 'happy-dom';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+for (const language of ['zh-CN', 'en']) {
 const window = new Window({ url: 'https://example.com', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
 try {
   const doc = window.document;
   doc.write(readFileSync('site/index.html', 'utf8'));
+  doc.documentElement.lang = language;
   window.eval(readFileSync('site/report-viewer.js', 'utf8'));
   const root = doc.querySelector('#report-viewer');
   const viewer = window.GravScopeReportViewer.current;
@@ -37,7 +39,7 @@ try {
   assert.doesNotThrow(() => window.GravScopeReportViewer.parse(JSON.stringify(trimmed)));
   await viewer.load(new window.File(['{broken'], 'broken.json'));
   assert.equal(root.querySelector('[data-report-output]').children.length, 0);
-  assert.ok(root.querySelector('[data-report-status]').textContent.includes('无法导入'));
+  assert.ok(root.querySelector('[data-report-status]').textContent.includes(language === 'en' ? 'Import failed:' : '无法导入'));
   await viewer.load(new window.File(['x'.repeat(5 * 1024 * 1024 + 1)], 'huge.json'));
   assert.ok(root.querySelector('[data-report-status]').textContent.includes('5 MB'));
   const many = { ...report, logs: Array.from({ length: 101 }, (_, index) => ({ id: index + 1, time: 1, level: 'log', args: ['row ' + index], groupIds: [] })) };
@@ -46,7 +48,10 @@ try {
   assert.equal(root.querySelectorAll('.report-record').length, 100);
   root.querySelector('[data-report-more]').click();
   assert.equal(root.querySelectorAll('.report-record').length, 101);
+  if (language === 'en') assert.ok(!/[\u3400-\u9fff]/.test(root.querySelector('[data-report-status]').textContent));
   viewer.clear();
   assert.equal(root.querySelector('[data-report-output]').children.length, 0);
   console.log('Report import, group filtering, network view, malformed input, safe text rendering and clear passed.');
 } finally { await window.happyDOM.close(); }
+
+}

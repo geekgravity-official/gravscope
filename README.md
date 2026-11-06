@@ -2,7 +2,7 @@
 
 # GravScope
 
-[Website & Playground / 官网与在线体验](https://geekgravity-official.github.io/gravscope/)
+[Website & Playground](https://geekgravity-official.github.io/gravscope/index-en.html)
 
 **Mobile web debugging, by GeekGravity.**
 
@@ -14,14 +14,14 @@ GravScope is an independent implementation, not a fork or drop-in replacement of
 
 ## Preview
 
-Website and live console screenshots from v0.2.1. [Try the playground](https://geekgravity-official.github.io/gravscope/).
+English website and live console screenshots using v0.2.2. [Try the playground](https://geekgravity-official.github.io/gravscope/index-en.html).
 
-![GravScope website with quick-start links and a feature illustration](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-0.2.1.jpg)
+![GravScope website with quick-start links and a feature illustration](https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/website-en-0.2.2.jpg)
 
-Mobile console · iPhone 16 / iOS 18.6 simulator, inside GeekGravity (panel only)
+Mobile console · Chrome at a 393 × 852 CSS-pixel viewport (panel only; not an iOS device test)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-ios-0.2.1.jpg" alt="GravScope mobile console in GeekGravity on an iPhone 16 simulator" width="360" />
+  <img src="https://raw.githubusercontent.com/geekgravity-official/gravscope/main/docs/images/console-mobile-en-0.2.2.jpg" alt="GravScope English console in a mobile-width browser viewport" width="360" />
 </p>
 
 ## Status

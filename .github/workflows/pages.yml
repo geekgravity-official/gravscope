@@ -6,6 +6,8 @@ on:
       - 'site/**'
       - 'public/brand/**'
       - 'scripts/build-site.mjs'
+      - 'scripts/localize-site.mjs'
+      - 'scripts/site-en.json'
       - 'scripts/check-site.mjs'
       - 'scripts/check-report-viewer.mjs'
       - 'package-lock.json'

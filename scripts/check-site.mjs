@@ -1,6 +1,7 @@
 import { Window } from 'happy-dom';
 import { readFileSync, existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 for (const language of ['zh-CN', 'en']) {
 const page = language === 'en' ? 'index-en.html' : 'index.html';
 const window = new Window({ url: 'https://geekgravity-official.github.io/gravscope/' + page + '#api', settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true } });
@@ -8,6 +9,9 @@ try {
   const document = window.document;
   document.write(readFileSync('site-dist/' + page, 'utf8'));
   assert.equal(document.documentElement.lang, language);
+  const expectedCssHash = createHash('sha256').update(readFileSync('site-dist/style.css')).digest('hex').slice(0, 12);
+  assert.equal(new URL(document.querySelector('link[rel="stylesheet"]').href).searchParams.get('v'), expectedCssHash);
+
   if (language === 'en') assert.ok(!/[\u3400-\u9fff]/.test(document.body.textContent.replace('中文', '')));
   for (const node of document.querySelectorAll('[src], [href]')) {
     const path = node.getAttribute('src') || node.getAttribute('href');

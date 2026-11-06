@@ -11,7 +11,7 @@ export async function localizeSite(directory) {
     document.write(await readFile(`${directory}/index.html`, 'utf8'));
     function translate(text) {
       if (!/[\u3400-\u9fff]/.test(text)) return text;
-      if (text === '中文') return text; // Language selector's endonym.
+      if (text === '中文' || text === '简体中文' || text === '中') return text; // Language selector's endonym.
       if (!(text in translations)) throw new Error(`Missing English translation: ${text}`);
       return translations[text];
     }

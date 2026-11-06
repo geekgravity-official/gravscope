@@ -12,7 +12,7 @@ try {
   const expectedCssHash = createHash('sha256').update(readFileSync('site-dist/style.css')).digest('hex').slice(0, 12);
   assert.equal(new URL(document.querySelector('link[rel="stylesheet"]').href).searchParams.get('v'), expectedCssHash);
 
-  if (language === 'en') assert.ok(!/[\u3400-\u9fff]/.test(document.body.textContent.replace('中文', '')));
+  if (language === 'en') assert.ok(!/[\u3400-\u9fff]/.test(document.body.textContent.replace('中', '')));
   for (const node of document.querySelectorAll('[src], [href]')) {
     const path = node.getAttribute('src') || node.getAttribute('href');
     if (path.startsWith('./') && path !== './') assert.ok(existsSync('site-dist/' + path.slice(2).split(/[?#]/)[0]), path);

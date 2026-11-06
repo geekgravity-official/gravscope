@@ -6,13 +6,11 @@
 
 .report-controls{display:flex;gap:16px;flex-wrap:wrap;margin-top:20px}.report-controls input{max-width:100%;padding:8px;border:1px solid #dce3ef;border-radius:4px}.report-record,.report-group{padding:12px;border:1px solid #dce3ef;border-radius:6px;margin:8px 0;overflow-wrap:anywhere}.report-group{background:rgba(75,118,255,.05);margin-left:12px}.report-record summary,.report-group summary{cursor:pointer;white-space:pre-wrap}#report-viewer pre{background:#f0f3fa;color:#435580;padding:16px;max-height:360px;overflow:auto}#report-viewer button{padding:8px 12px;border:1px solid #dce3ef;border-radius:5px;background:white}#report-viewer input[type=file]{max-width:100%}
 
-/* A quiet navigation control, with full-size touch targets. */
+/* Compact language switch, aligned with GeekGravity's header control. */
 nav{align-items:center;flex-wrap:wrap}
-.language-switch{display:inline-flex;align-items:center;gap:2px;position:relative;padding-left:16px;margin-left:2px;white-space:nowrap}
-.language-switch::before{content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:#dce3ef;transform:translateY(-50%)}
-.language-switch a{display:inline-flex;align-items:center;justify-content:center;position:relative;min-height:40px;min-width:40px;padding:0 9px;border-radius:5px;color:#69758a;font-size:12px;font-weight:500;transition:color .15s ease,background-color .15s ease}
-.language-switch a:hover{background:#edf1f8;color:#263147}
-.language-switch a[aria-current="page"]{color:#345cdb;font-weight:650}
-.language-switch a[aria-current="page"]::after{content:"";position:absolute;bottom:5px;left:50%;width:12px;height:2px;border-radius:2px;background:currentColor;transform:translateX(-50%)}
-@media(max-width:600px){.nav nav{width:100%;gap:12px}.language-switch{margin-left:auto;padding-left:10px;gap:0}.language-switch a{min-height:44px;min-width:44px;padding:0 8px}}
+.language-switch{display:inline-flex;align-items:center;gap:0;height:28px;padding:2px;margin-left:4px;border:1px solid #0000000e;border-radius:999px;white-space:nowrap}
+.language-switch a{display:inline-flex;align-items:center;justify-content:center;position:relative;height:22px;min-width:26px;padding:3px 7px;border-radius:999px;font-size:11px;font-weight:600;line-height:16px;color:#8791a1;transition:color .15s ease,background-color .15s ease}
+.language-switch a:hover{color:#1f2937;background:#eef0f4}
+.language-switch a[aria-current="page"]{background:#f3f4f6;color:#1f2937;box-shadow:0 1px 4px #0f172a1a}
+@media(max-width:600px){.nav nav{width:100%;gap:12px}.language-switch{margin-left:auto}.language-switch a{min-width:32px}.language-switch a::before{content:"";position:absolute;inset:-11px 0}}
 @media(prefers-reduced-motion:reduce){.language-switch a{transition:none}}

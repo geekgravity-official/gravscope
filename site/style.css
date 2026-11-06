@@ -6,10 +6,13 @@
 
 .report-controls{display:flex;gap:16px;flex-wrap:wrap;margin-top:20px}.report-controls input{max-width:100%;padding:8px;border:1px solid #dce3ef;border-radius:4px}.report-record,.report-group{padding:12px;border:1px solid #dce3ef;border-radius:6px;margin:8px 0;overflow-wrap:anywhere}.report-group{background:rgba(75,118,255,.05);margin-left:12px}.report-record summary,.report-group summary{cursor:pointer;white-space:pre-wrap}#report-viewer pre{background:#f0f3fa;color:#435580;padding:16px;max-height:360px;overflow:auto}#report-viewer button{padding:8px 12px;border:1px solid #dce3ef;border-radius:5px;background:white}#report-viewer input[type=file]{max-width:100%}
 
-/* Keep the current language and the alternate equally discoverable. */
+/* A quiet navigation control, with full-size touch targets. */
 nav{align-items:center;flex-wrap:wrap}
-.language-switch{display:inline-flex;align-items:center;gap:3px;padding:4px;border:1px solid #c5d0ed;border-radius:10px;background:#edf2ff;box-shadow:0 2px 6px #203a7b0a;white-space:nowrap}
-.language-switch a{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border-radius:7px;color:#485c8c;font-size:13px;font-weight:650}
-.language-switch a:hover{background:#dce6ff;color:#294fc4}
-.language-switch a[aria-current="page"]{background:#4b76ff;color:#fff;box-shadow:0 2px 4px #3556bf26}
-@media(max-width:600px){.nav nav{width:100%;gap:12px}.language-switch{margin-left:auto}.language-switch a{min-height:40px;padding:0 10px}}
+.language-switch{display:inline-flex;align-items:center;gap:2px;position:relative;padding-left:16px;margin-left:2px;white-space:nowrap}
+.language-switch::before{content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:#dce3ef;transform:translateY(-50%)}
+.language-switch a{display:inline-flex;align-items:center;justify-content:center;position:relative;min-height:40px;min-width:40px;padding:0 9px;border-radius:5px;color:#69758a;font-size:12px;font-weight:500;transition:color .15s ease,background-color .15s ease}
+.language-switch a:hover{background:#edf1f8;color:#263147}
+.language-switch a[aria-current="page"]{color:#345cdb;font-weight:650}
+.language-switch a[aria-current="page"]::after{content:"";position:absolute;bottom:5px;left:50%;width:12px;height:2px;border-radius:2px;background:currentColor;transform:translateX(-50%)}
+@media(max-width:600px){.nav nav{width:100%;gap:12px}.language-switch{margin-left:auto;padding-left:10px;gap:0}.language-switch a{min-height:44px;min-width:44px;padding:0 8px}}
+@media(prefers-reduced-motion:reduce){.language-switch a{transition:none}}

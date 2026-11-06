@@ -2,10 +2,18 @@
   'use strict';
   const english = document.documentElement.lang === 'en';
   const t = (zh, en) => english ? en : zh;
-  const languageSwitch = document.querySelector('[data-language-switch]');
-  const updateLanguageLink = () => { if (languageSwitch) languageSwitch.hash = location.hash; };
-  updateLanguageLink();
-  window.addEventListener('hashchange', updateLanguageLink);
+  const languageLinks = document.querySelectorAll('[data-language]');
+  const updateLanguageLinks = () => {
+    languageLinks.forEach(link => {
+      const url = new URL(link.getAttribute('href'), location.href);
+      url.search = location.search;
+      url.searchParams.set('lang', link.dataset.language);
+      url.hash = location.hash;
+      link.href = url.href;
+    });
+  };
+  updateLanguageLinks();
+  window.addEventListener('hashchange', updateLanguageLinks);
   const base = new URL('.', document.currentScript.src);
   const status = document.querySelector('#demo-status');
   const copyStatus = document.querySelector('#copy-status');

@@ -11,7 +11,7 @@ try {
   if (language === 'en') assert.ok(!/[\u3400-\u9fff]/.test(document.body.textContent.replace('中文', '')));
   for (const node of document.querySelectorAll('[src], [href]')) {
     const path = node.getAttribute('src') || node.getAttribute('href');
-    if (path.startsWith('./') && path !== './') assert.ok(existsSync('site-dist/' + path.slice(2)), path);
+    if (path.startsWith('./') && path !== './') assert.ok(existsSync('site-dist/' + path.slice(2).split(/[?#]/)[0]), path);
     if (path.startsWith('#')) assert.ok(document.getElementById(path.slice(1)), path);
   }
   const script = document.createElement('script');
@@ -32,6 +32,9 @@ try {
   const settle = () => new Promise(resolve => setTimeout(resolve, 30));
   window.eval(readFileSync('site-dist/app.js', 'utf8'));
   assert.equal(document.querySelector('[data-language-switch]').hash, '#api');
+  assert.equal(document.querySelectorAll('[data-language]').length, 2);
+  assert.equal(document.querySelector('[data-language][aria-current="page"]').dataset.language, language === 'en' ? 'en' : 'zh');
+  assert.equal(new URL(document.querySelector('[data-language-switch]').href).searchParams.get('lang'), language === 'en' ? 'zh' : 'en');
   assert.ok(document.querySelector('#cdn-code').textContent.includes('cdn.jsdelivr.net'));
   document.querySelector('#cdn').value = 'unpkg';
   document.querySelector('#cdn').dispatchEvent(new window.Event('change'));

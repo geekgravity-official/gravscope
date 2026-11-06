@@ -205,5 +205,6 @@
   "扫描二维码，在手机浏览器打开 GravScope 在线体验": "Scan to open the GravScope playground on your phone",
   "复制体验链接": "Copy playground link",
   "资源加载状态（0.2.2）": "Resource loading states (0.2.2)",
-  "懒加载图片显示“懒加载 · 状态未确认”。图片移除，或资源超过 30 秒仍无法确认完成时，显示“状态未知”，不代表失败或已取消。后续收到加载完成、失败或性能记录仍会更新；未确认资源不会额外请求面板缩略图。": "Lazy images show “Lazy load · unconfirmed”. Removed images, or resources unresolved after 30 seconds, show “State unknown”, not failure or cancellation. Later load/error events or timing entries can still update them. Unconfirmed resources do not trigger panel thumbnail requests."
+  "懒加载图片显示“懒加载 · 状态未确认”。图片移除，或资源超过 30 秒仍无法确认完成时，显示“状态未知”，不代表失败或已取消。后续收到加载完成、失败或性能记录仍会更新；未确认资源不会额外请求面板缩略图。": "Lazy images show “Lazy load · unconfirmed”. Removed images, or resources unresolved after 30 seconds, show “State unknown”, not failure or cancellation. Later load/error events or timing entries can still update them. Unconfirmed resources do not trigger panel thumbnail requests.",
+  "Language / 语言": "Language / 语言"
 }

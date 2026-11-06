@@ -9,6 +9,7 @@ on:
       - 'scripts/localize-site.mjs'
       - 'scripts/site-en.json'
       - 'scripts/check-site.mjs'
+      - 'scripts/check-site-language.mjs'
       - 'scripts/check-report-viewer.mjs'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
@@ -29,6 +30,7 @@ jobs:
       - run: npm ci
       - run: node scripts/build-site.mjs
       - run: node scripts/check-site.mjs
+      - run: node scripts/check-site-language.mjs
       - run: node scripts/check-report-viewer.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

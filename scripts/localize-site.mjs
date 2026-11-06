@@ -25,8 +25,10 @@ export async function localizeSite(directory) {
     for (const pre of document.querySelectorAll('pre')) pre.textContent = pre.textContent.replace("lang: 'zh'", "lang: 'en'");
     document.querySelector('img[src="./qr.svg"]').setAttribute('src', './qr-en.svg');
     for (const link of document.querySelectorAll('a[href*="README.zh-CN.md"]')) link.href = link.getAttribute('href').replace('README.zh-CN.md', 'README.md');
-    const switcher = document.querySelector('[data-language-switch]');
-    switcher.href = './index.html'; switcher.textContent = '中文'; switcher.hreflang = 'zh-CN'; switcher.lang = 'zh-CN';
+    const chinese = document.querySelector('[data-language="zh"]');
+    const english = document.querySelector('[data-language="en"]');
+    chinese.removeAttribute('aria-current'); chinese.setAttribute('data-language-switch', '');
+    english.setAttribute('aria-current', 'page'); english.removeAttribute('data-language-switch');
     document.querySelector('.wordmark').setAttribute('href', './index-en.html');
     document.querySelector('link[rel="canonical"]').href = 'https://geekgravity-official.github.io/gravscope/index-en.html';
     await writeFile(`${directory}/index-en.html`, '<!doctype html>\n' + document.documentElement.outerHTML + '\n');

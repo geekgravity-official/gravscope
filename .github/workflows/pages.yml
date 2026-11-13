@@ -8,6 +8,9 @@ on:
       - 'scripts/build-site.mjs'
       - 'scripts/localize-site.mjs'
       - 'scripts/site-en.json'
+      - 'scripts/site-seo.mjs'
+      - 'scripts/check-site-seo.mjs'
+      - 'docs/images/**'
       - 'scripts/check-site.mjs'
       - 'scripts/check-site-language.mjs'
       - 'scripts/check-report-viewer.mjs'
@@ -30,6 +33,7 @@ jobs:
       - run: npm ci
       - run: node scripts/build-site.mjs
       - run: node scripts/check-site.mjs
+      - run: node scripts/check-site-seo.mjs
       - run: node scripts/check-site-language.mjs
       - run: node scripts/check-report-viewer.mjs
       - uses: actions/configure-pages@v5

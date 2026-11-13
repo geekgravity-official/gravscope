@@ -1,3 +1,4 @@
+import { buildSiteSeo } from './site-seo.mjs';
 import { localizeSite } from './localize-site.mjs';
 import { mkdir, rm, cp, writeFile, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -17,5 +18,15 @@ const cssHash = createHash('sha256').update(await readFile('site-dist/style.css'
 const html = await readFile('site-dist/index.html', 'utf8');
 await writeFile('site-dist/index.html', html.replace('href="./style.css"', `href="./style.css?v=${cssHash}"`));
 await localizeSite('site-dist');
+await buildSiteSeo('site-dist');
+// Version all first-party scripts as well as CSS so language-routing fixes replace cached scripts.
+for (const file of ['index.html', 'index-en.html']) {
+  let page = await readFile(`site-dist/${file}`, 'utf8');
+  for (const script of ['language.js', 'app.js', 'report-viewer.js']) {
+    const hash = createHash('sha256').update(await readFile(`site-dist/${script}`)).digest('hex').slice(0, 12);
+    page = page.replace(`src="./${script}"`, `src="./${script}?v=${hash}"`);
+  }
+  await writeFile(`site-dist/${file}`, page);
+}
 await writeFile('site-dist/.nojekyll', '');
 console.log('Site built with checksum-verified npm 0.2.2 bundle.');

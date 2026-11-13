@@ -14,3 +14,5 @@ nav{align-items:center;flex-wrap:wrap}
 .language-switch a[aria-current="page"]{background:#f3f4f6;color:#1f2937;box-shadow:0 1px 4px #0f172a1a}
 @media(max-width:600px){.nav nav{width:100%;gap:12px}.language-switch{margin-left:auto}.language-switch a{min-width:32px}.language-switch a::before{content:"";position:absolute;inset:-11px 0}}
 @media(prefers-reduced-motion:reduce){.language-switch a{transition:none}}
+
+.language-suggestion{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;color:#526078;font-size:12px}.language-suggestion[hidden]{display:none}.language-suggestion a{color:#4269e5}.language-suggestion button{border:0;background:none;color:#69758a;font-size:20px;min-width:36px;min-height:36px}
